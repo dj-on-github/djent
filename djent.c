@@ -679,7 +679,7 @@ int main(int argc, char** argv)
 	do {
 		terse_index++;
 		filebytes = 0;
-
+        /* printf("OPTIND %d, filenumber %d, ARGC %d\n",optind,filenumber,argc); */
 		if (use_stdin==1) {
 			use_stdin = 1;
 			if (textmode != 1) freopen(NULL, "rb", stdin);
@@ -725,10 +725,6 @@ int main(int argc, char** argv)
 
 			if (terse == 0) printf(" Symbol Size(bits) = %d\n", symbol_length);
 
-			if (fp == NULL) {
-				printf("Error : Unable to open file %s\n", filename);
-				exit(1);
-			}
 		}
 
 
@@ -799,39 +795,10 @@ int main(int argc, char** argv)
             printf("   Mean = %f\n",result_mean);
 		    printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
             printf("   Serial Correlation = %f\n",result_scc);
-/*
-0,  File-bytes,    Entropy,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation\n");
-
-Entropy = 0.999996 bits per bit.
-
-Optimum compression would reduce the size
-of this 81920 bit file by 0 percent.
-
-Chi square distribution for 81920 samples is 0.51, and randomly
-would exceed this value 47.60 percent of the times.
-
-Arithmetic mean value of data bits is 0.5012 (0.5 = random).
-Monte Carlo value for Pi is 2.942555686 (error 6.34 percent).
-Serial correlation coefficient is 0.202143 (totally uncorrelated = 0.0).
-
-double    result_mean;
-uint64_t result_chisq_count;
-double   result_chisq_distribution;
-double   result_chisq_percent;
-double  result_entropy;
-double  result_pi;
-double  result_pierr;
-double  result_compression;
-double  result_scc;
-
-*/
-
-
-		
 		}
 
 		filenumber++;
-	} while ((filenumber <= argc) && (use_stdin != 1));
+	} while ((filenumber < argc) && (use_stdin != 1));
     
 	return 0;
 
