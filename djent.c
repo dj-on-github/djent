@@ -730,7 +730,7 @@ int main(int argc, char** argv)
 
 		/* Print terse header if necessary */
 		if ((terse == 1) && (terse_index == 1)) {
-			printf("0,  File-bytes,    Entropy,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation\n");
+			printf("0,  File-bytes,    Entropy,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation, Filename\n");
 		}
 
 		/* Initialize the metrics */
@@ -786,7 +786,7 @@ int main(int argc, char** argv)
 		finalize_scc();
 
 		if (terse == 1) {
-			printf("%d,%12ld,%12f,%12f,%12f,%12f,   %12f\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc);
+			printf("%d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
 		}
 		else {
             printf("   Shannon IID Entropy = %f bits per symbol\n",result_entropy);
