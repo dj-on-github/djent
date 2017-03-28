@@ -51,22 +51,6 @@
 #define M_PI 3.1415926535897932384626
 #endif
 
-extern double pochisq(const double ax, const int df);
-
-
-
-
-/* The queue
- *
- * This implements a FIFO into which bytes are pushed from a file and 
- * from which symbols (of the chosen size) are pulled from the other end.
- * Data from the file is read into buffer and that data is used to fill the
- * input side of the queue. The queue is twice as big as the buffer so the 
- * buffer read is done when the queue is less than half full.
- * It treats bits within bytes as big endian (I.E. MSB arrived first from ES).
- * There will be an option to switch to little endian at some point.
- */
- 
 unsigned char buffer[BUFFSIZE];
 unsigned char queue[QUEUESIZE];
 unsigned int queue_start;     /* FIFO pointers */
@@ -185,6 +169,65 @@ uint64_t ipow(uint64_t base, uint64_t exp)
 	return result;
 }
 
+/* Chi Square P value computation */
+
+double igf(double s, double z)
+{
+    double sc;
+    double sum = 1.0;
+    double nom = 1.0;
+    double denom = 1.0;
+    int k;
+    
+    if(z < 0.0) return 0.0;
+    
+    sc = (1.0 / s);
+    
+    sc = sc * pow(z, s);
+    sc = sc * exp(-z);
+ 
+    for(k = 0; k < 200; k++) {
+	    nom *= z;
+	    s++;
+	    denom *= s;
+	    sum += (nom / denom);
+    }
+ 
+    return sum * sc;
+}
+
+double chisqr(double crit, int df)
+{
+    double k;
+    double x;
+    double p;
+    
+    if((crit < 0) || (df < 1)) return (0.0);
+    
+    k = df * 0.5;
+    x = crit * 0.5;
+    if(df == 2) return exp(-1.0 * x);
+    
+    p = igf(k, x);
+    
+    if(isnan(p) || isinf(p) || p <= 1e-8) return 1e-14;
+
+	p = p / tgamma(k);
+    return (1.0 - p);
+}
+
+/* The queue
+ *
+ * This implements a FIFO into which bytes are pushed from a file and 
+ * from which symbols (of the chosen size) are pulled from the other end.
+ * Data from the file is read into buffer and that data is used to fill the
+ * input side of the queue. The queue is twice as big as the buffer so the 
+ * buffer read is done when the queue is less than half full.
+ * It treats bits within bytes as big endian (I.E. MSB arrived first from ES).
+ * There will be an option to switch to little endian at some point.
+ */
+ 
+ 
 void init_byte_queue() {
     int i;
     
@@ -355,6 +398,7 @@ void init_monte_carlo() {
 };
 
 void init_compression() {
+    /* nothing to do here */
 };
 
 void init_scc() {
@@ -484,8 +528,9 @@ void finalize_chisq() {
         chisq_sum  += (double)(i * occurance_count[i]);
     }
     
-    chisq_final_prob = pochisq(chisq, (occurance_size-1));
-
+    /*chisq_final_prob = pochisq(chisq, (occurance_size-1)); */
+    chisq_final_prob = chisqr(chisq, (occurance_size-1));
+    
 	result_chisq_count = occurance_total;
 	result_chisq_distribution = chisq;
 	result_chisq_percent = chisq_final_prob * 100;
