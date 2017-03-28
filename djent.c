@@ -34,14 +34,15 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifdef __linux__ 
+#ifdef _WIN32
+#include "vsdjent/stdafx.h"
+#include "ya_getopt/ya_getopt.h"
+#else
 #include <unistd.h> 
 #include <getopt.h>
 #define  errno_t int
-#elif _WIN32
-#include "vsdjent/stdafx.h"
-#include "ya_getopt/ya_getopt.h"
 #endif
+
 
 #define QUEUESIZE 4096
 #define BUFFSIZE  2048
@@ -319,7 +320,11 @@ void init_occurances() {
     /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurance_size));
      */
     if (occurance_count == NULL) {
+        #ifdef _WIN32
         fprintf(stderr,"Error, unable to allocate %ld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
+        #else
+        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
+        #endif
         exit(1);
     }
 
@@ -490,7 +495,11 @@ void finalize_chisq() {
     if (terse==1) {
         printf(" ,%1.2f ",chisq_final_prob * 100); 
     } else {
+        #ifdef _WIN32
         printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
+        #else
+        printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
+        #endif
     }
 
 };
@@ -690,34 +699,34 @@ int main(int argc, char** argv)
 
 			if (textmode == 1) {
 				if (terse == 0) printf(" opening %s as hex text\n", filename);
-                #ifdef __linux__
-				fp = fopen(filename,"r");
-                if (fp == NULL) {
-					fprintf(stderr, "Error : Unable to open file %s\n", filename);
-					exit(1);
-                }
-                #else
+                #ifdef _WIN32
 				if ((err = fopen_s(&fp, filename, "r")) != 0) {
 					strerror_s(errstring, ERRSTRINGSIZE, err);
 					fprintf(stderr, "Error : Unable to open file %s, %s\n", filename, errstring);
 					exit(1);
 				}
-                #endif
-			}
-			else {
-				if (terse == 0) printf(" opening %s as binary\n", filename);
-                #ifdef __linux__
-				fp = fopen(filename,"rb");
+                #else
+				fp = fopen(filename,"r");
                 if (fp == NULL) {
 					fprintf(stderr, "Error : Unable to open file %s\n", filename);
 					exit(1);
                 }
-                #else
+                #endif
+			}
+			else {
+				if (terse == 0) printf(" opening %s as binary\n", filename);
+                #ifdef _WIN32
 				if ((err = fopen_s(&fp, filename, "rb")) != 0) {
 					strerror_s(errstring, ERRSTRINGSIZE, err);
 					fprintf(stderr, "Error : Unable to open file %s, %s\n", filename, errstring);
 					exit(1);
 				}
+                #else
+				fp = fopen(filename,"rb");
+                if (fp == NULL) {
+					fprintf(stderr, "Error : Unable to open file %s\n", filename);
+					exit(1);
+                }
                 #endif
 				/*  fp = fopen(filename,"rb"); */
 				/* printf("           %x\n",(unsigned int)fp);*/
@@ -786,12 +795,20 @@ int main(int argc, char** argv)
 		finalize_scc();
 
 		if (terse == 1) {
+            #ifdef _WIN32
 			printf("%d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+            #else
+			printf("%d,%12lld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+            #endif
 		}
 		else {
             printf("   Shannon IID Entropy = %f bits per symbol\n",result_entropy);
 		    printf("   Optimal compression would compress by %f percent\n", result_compression);
+            #ifdef _WIN32
             printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
+            #else
+            printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
+            #endif
             printf("   Mean = %f\n",result_mean);
 		    printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
             printf("   Serial Correlation = %f\n",result_scc);
