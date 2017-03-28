@@ -364,7 +364,7 @@ void init_occurances() {
      */
     if (occurance_count == NULL) {
         #ifdef _WIN32
-        fprintf(stderr,"Error, unable to allocate %ld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
+        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
         #else
         fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
         #endif
@@ -541,7 +541,7 @@ void finalize_chisq() {
         printf(" ,%1.2f ",chisq_final_prob * 100); 
     } else {
         #ifdef _WIN32
-        printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
+        printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
         #else
         printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
         #endif
@@ -850,7 +850,7 @@ int main(int argc, char** argv)
             printf("   Shannon IID Entropy = %f bits per symbol\n",result_entropy);
 		    printf("   Optimal compression would compress by %f percent\n", result_compression);
             #ifdef _WIN32
-            printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
+            printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
             #else
             printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
             #endif
@@ -861,9 +861,24 @@ int main(int argc, char** argv)
 
 		filenumber++;
 	} while ((filenumber < argc) && (use_stdin != 1));
-    
-	return 0;
 
+	/* Find out what the various compilers give us 
+    #ifdef __llvm__
+        printf("llvm\n");
+    #endif
+
+    #ifdef __clang__
+        printf("clang\n");
+    #endif
+    
+    #ifdef __gcc__
+        printf("gcc\n");
+    #endif
+	#ifdef _WIN32
+		printf("win32\n");
+	#endif
+	return 0;
+	*/
 }
 
 
