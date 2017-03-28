@@ -36,6 +36,8 @@
 
 #ifdef __linux__ 
 #include <unistd.h> 
+#include <getopt.h>
+#define  errno_t int
 #elif _WIN32
 #include "vsdjent/stdafx.h"
 #include "ya_getopt/ya_getopt.h"
@@ -317,7 +319,7 @@ void init_occurances() {
     /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurance_size));
      */
     if (occurance_count == NULL) {
-        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
+        fprintf(stderr,"Error, unable to allocate %ld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
         exit(1);
     }
 
@@ -488,7 +490,7 @@ void finalize_chisq() {
     if (terse==1) {
         printf(" ,%1.2f ",chisq_final_prob * 100); 
     } else {
-        printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
+        printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
     }
 
 };
@@ -583,9 +585,10 @@ int main(int argc, char** argv)
     scc_wrap = 0;
 
 	#define ERRSTRINGSIZE 256
+    #ifdef _WIN32
 	errno_t err;
 	char errstring[ERRSTRINGSIZE];
-
+    #endif
     int filenumber = 0;
     
     char optString[] = "bcwfthul:";
@@ -687,20 +690,35 @@ int main(int argc, char** argv)
 
 			if (textmode == 1) {
 				if (terse == 0) printf(" opening %s as hex text\n", filename);
+                #ifdef __linux__
+				fp = fopen(filename,"r");
+                if (fp == NULL) {
+					fprintf(stderr, "Error : Unable to open file %s\n", filename);
+					exit(1);
+                }
+                #else
 				if ((err = fopen_s(&fp, filename, "r")) != 0) {
 					strerror_s(errstring, ERRSTRINGSIZE, err);
 					fprintf(stderr, "Error : Unable to open file %s, %s\n", filename, errstring);
 					exit(1);
 				}
-				/*fp = fopen(filename,"r");*/
+                #endif
 			}
 			else {
 				if (terse == 0) printf(" opening %s as binary\n", filename);
+                #ifdef __linux__
+				fp = fopen(filename,"rb");
+                if (fp == NULL) {
+					fprintf(stderr, "Error : Unable to open file %s\n", filename);
+					exit(1);
+                }
+                #else
 				if ((err = fopen_s(&fp, filename, "rb")) != 0) {
 					strerror_s(errstring, ERRSTRINGSIZE, err);
 					fprintf(stderr, "Error : Unable to open file %s, %s\n", filename, errstring);
 					exit(1);
 				}
+                #endif
 				/*  fp = fopen(filename,"rb"); */
 				/* printf("           %x\n",(unsigned int)fp);*/
 			}
@@ -772,10 +790,44 @@ int main(int argc, char** argv)
 		finalize_scc();
 
 		if (terse == 1) {
-			printf("%d,%12lld,%12f,%12f,%12f,%12f,   %12f\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc);
+			printf("%d,%12ld,%12f,%12f,%12f,%12f,   %12f\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc);
 		}
 		else {
-			/* nothing */
+            printf("   Shannon IID Entropy = %f bits per symbol\n",result_entropy);
+		    printf("   Optimal compression would compress by %f percent\n", result_compression);
+            printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
+            printf("   Mean = %f\n",result_mean);
+		    printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
+            printf("   Serial Correlation = %f\n",result_scc);
+/*
+0,  File-bytes,    Entropy,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation\n");
+
+Entropy = 0.999996 bits per bit.
+
+Optimum compression would reduce the size
+of this 81920 bit file by 0 percent.
+
+Chi square distribution for 81920 samples is 0.51, and randomly
+would exceed this value 47.60 percent of the times.
+
+Arithmetic mean value of data bits is 0.5012 (0.5 = random).
+Monte Carlo value for Pi is 2.942555686 (error 6.34 percent).
+Serial correlation coefficient is 0.202143 (totally uncorrelated = 0.0).
+
+double    result_mean;
+uint64_t result_chisq_count;
+double   result_chisq_distribution;
+double   result_chisq_percent;
+double  result_entropy;
+double  result_pi;
+double  result_pierr;
+double  result_compression;
+double  result_scc;
+
+*/
+
+
+		
 		}
 
 		filenumber++;
