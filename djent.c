@@ -66,6 +66,8 @@ unsigned int got_byte;
 int64_t      current_symbol;
 unsigned int bits_in_current_symbol;
 int outcount;
+uint64_t scc_fifo[256];
+uint64_t scc_first_lagn[256];
 
 uint64_t symbol_count;
 uint64_t mean_total;
@@ -78,6 +80,7 @@ unsigned int symbol_length;
 int hexmode;
 int print_occurence;
 int fold;
+int lagn;
 
 int use_stdin;
 char *filename;
@@ -151,6 +154,7 @@ void display_usage() {
 	fprintf(stderr, "  -b        --binary            Treat incoming data as binary. Default bit length will be -l 1\n");
 	fprintf(stderr, "  -c        --occurence         Print symbol occurence counts\n");
 	fprintf(stderr, "  -w        --scc_wrap          Treat data as cyclical in SCC\n");
+	fprintf(stderr, "  -n <n>    --lagn=<n>          Lag gap in SCC. Default=1\n");
 	fprintf(stderr, "  -f        --fold              Fold uppercase letters to lower case\n");
 	fprintf(stderr, "  -t        --terse             Terse output\n");
 	fprintf(stderr, "  -h or -u  --help              Print this text\n");
@@ -606,20 +610,40 @@ void update_compression(uint64_t symbol) {
 };
 
 void update_scc(uint64_t symbol) {
-    /* We need two symbols to start, so skip the first symbol */
-    scc_count++;
+    int i;
+    if (lagn==1) {
+        /* We need lagn+1 symbols to start, so skip the first symbol(s) */
+        scc_count++;
     
-    if (scc_first==1) {
-        scc_first = 0;
-        first_symbol = symbol;
-    } else {
-        t1 += (scc_previous * symbol);
+        if (scc_first==1) {
+            scc_first = 0;
+            first_symbol = symbol;
+        } else {
+            t1 += (scc_previous * symbol);
+        }
+        t2 += symbol*symbol;
+        t3 += symbol;
+    
+        /* printf("symbol %02X, count=%llu t1= %llX,  t2= %llx, t3= %llx\n",symbol,scc_count,t1,t2,t3); */
+        scc_previous = symbol;
+    } else { /* lagn > 1 */
+        scc_count++;
+    
+        if (scc_count <= lagn) {
+            scc_fifo[scc_count-1]=symbol;
+            scc_first_lagn[scc_count-1]=symbol;
+        } else {
+            t1 += (scc_fifo[0] * symbol);
+            for(i=0;i<lagn;i++) {
+                scc_fifo[i]=scc_fifo[i+1];
+            }
+            scc_fifo[lagn]=symbol;
+            t2 += symbol*symbol;
+            t3 += symbol;           
+        }
+        /* printf("symbol %02X, count=%llu t1= %llX,  t2= %llx, t3= %llx\n",symbol,scc_count,t1,t2,t3); */
+         
     }
-    t2 += symbol*symbol;
-    t3 += symbol;
-    
-    /* printf("symbol %02X, count=%llu t1= %llX,  t2= %llx, t3= %llx\n",symbol,scc_count,t1,t2,t3); */
-    scc_previous = symbol;
 };
 
 /* The finalization routines for the various metrics */
@@ -710,13 +734,22 @@ void finalize_scc() {
     double scc;
     int64_t top;
     int64_t bottom;
+    int i;
     
     if (scc_wrap==1) {
+        if (lagn==1) {
             t1 += (scc_previous * first_symbol);
             t2 += first_symbol*first_symbol;
             t3 += first_symbol;
+        } else {
+            for (i=0;i<lagn;i++) {
+                t1 += (scc_fifo[i] * scc_first_lagn[i]);
+                t2 += scc_first_lagn[i]*scc_first_lagn[i];
+                t3 += scc_first_lagn[i];
+            }
+        }
     } else {
-        scc_count -= 1;
+        scc_count -= lagn;
     }
     
     /* need signed arithmetic because we are subtracting */
@@ -747,7 +780,8 @@ int main(int argc, char** argv)
     fp = NULL;
     terse_index = 0;
     scc_wrap = 0;
-
+    lagn = 1;
+    
 	#define ERRSTRINGSIZE 256
     #ifdef _WIN32
 	errno_t err;
@@ -755,7 +789,7 @@ int main(int argc, char** argv)
     #endif
     int filenumber = 0;
     
-    char optString[] = "bcwfthul:";
+    char optString[] = "bcwfthun:l:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
@@ -763,6 +797,7 @@ int main(int argc, char** argv)
     { "occurence", no_argument, NULL, 'c' },
     { "fold", no_argument, NULL, 'f' },
     { "scc_wrap", no_argument, NULL, 'w' },
+    { "lagn", required_argument, NULL, 'n' },
     { "terse", no_argument, NULL, 't' },
     { "help", no_argument, NULL, 'h' },
     { NULL, no_argument, NULL, 0 }
@@ -791,6 +826,10 @@ int main(int argc, char** argv)
                 scc_wrap = 1;
                 break;
                 
+            case 'n':
+                lagn = atoi(optarg);
+                break;
+                                
             case 'f':
                 fold = 1;
                 break;
