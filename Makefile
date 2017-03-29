@@ -9,6 +9,9 @@ djent: djent.o chisq.o
 djent.o: djent.c
 	$(CC) -c $(CFLAGS) -o djent.o djent.c
 
+chisq.o: chisq.c
+	$(CC) -c $(CFLAGS) -o chisq.o chisq.c
+
 install:
 	cp djent /usr/local/bin
 

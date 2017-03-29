@@ -51,6 +51,8 @@
 #define M_PI 3.1415926535897932384626
 #endif
 
+double pochisq(double ax,int df);
+
 unsigned char buffer[BUFFSIZE];
 unsigned char queue[QUEUESIZE];
 unsigned int queue_start;     /* FIFO pointers */
@@ -71,7 +73,6 @@ int terse;
 uint64_t filebytes;
 
 int opt;
-int i;
 unsigned int symbol_length;
 int textmode;
 int print_occurence;
@@ -87,9 +88,9 @@ int64_t symbol;
 
 double ent;
 
-uint64_t occurance_size;
-uint64_t *occurance_count;
-uint64_t occurance_total;
+uint64_t occurence_size;
+uint64_t *occurence_count;
+uint64_t occurence_total;
 
 double chisq;
 double chisq_sum;
@@ -185,6 +186,7 @@ double igf(double s, double z)
     
     sc = sc * pow(z, s);
     sc = sc * exp(-z);
+
  
     for(k = 0; k < 200; k++) {
 	    nom *= z;
@@ -201,15 +203,16 @@ double chisqr(double crit, int df)
     double k;
     double x;
     double p;
-    
-    if((crit < 0) || (df < 1)) return (0.0);
+    if (crit < 0.0) return 0.0;
+    if (df < 1) return 0.0;
     
     k = df * 0.5;
     x = crit * 0.5;
     if(df == 2) return exp(-1.0 * x);
     
+    printf("k=%f, x=%f\n",k,x);   
     p = igf(k, x);
-    
+    printf("igf(k,x)=%f\n",p); 
     if(isnan(p) || isinf(p) || p <= 1e-8) return 1e-14;
 
 	p = p / tgamma(k);
@@ -247,33 +250,160 @@ void init_byte_queue() {
     symbol_mask = ipow((uint64_t)2,(uint64_t)symbol_length)-1;
 }
 
+int ishex(unsigned char c) {
+    int result;
+    result = 0;
+    if (c == '0') 
+        result = 1;
+    else if (c == '1') result = 1;
+    else if (c == '2') result = 1;
+    else if (c == '3') result = 1;
+    else if (c == '4') result = 1;
+    else if (c == '5') result = 1;
+    else if (c == '6') result = 1;
+    else if (c == '7') result = 1;
+    else if (c == '8') result = 1;
+    else if (c == '9') result = 1;
+    else if (c == 'a') result = 1;
+    else if (c == 'b') result = 1;
+    else if (c == 'c') result = 1;
+    else if (c == 'd') result = 1;
+    else if (c == 'e') result = 1;
+    else if (c == 'f') result = 1;
+    else if (c == 'A') result = 1;
+    else if (c == 'B') result = 1;
+    else if (c == 'C') result = 1;
+    else if (c == 'D') result = 1;
+    else if (c == 'E') result = 1;
+    else if (c == 'F') result = 1;
+
+    return result;
+}
+
+int ishexorx(unsigned char c) {
+    int result;
+    result = 0;
+    if (ishex(c) == 1) result = 1;
+    else if (c == 'x') result = 1;
+
+    return result;
+}
+
+unsigned char hexpair[2];
+
+int hexstate;
+
+void init_hex2bin() {
+    hexpair[0]=0x00;
+    hexpair[1]=0x00;
+    
+    hexstate = 0;
+}
+
+int hex2bin(unsigned char *buffer, int len) {
+    int outpos = 0;
+    int scanpos = 0;
+    unsigned char c;
+    int byte;
+    int nybble;
+    /* Fetch characters until we get a hex 1.
+     * Shift it into hexpair
+     * If we have a valid hex pair put it in the buffer as binary
+     * If we have 0x, drop it, including the 0.
+     * If we have non hex, drop it.
+     */
+
+    do {
+        if (hexstate == 0) {
+            c = buffer[scanpos];
+            if (ishex(c) == 1) {
+                hexpair[0] = c;
+                hexstate = 1;
+            }
+            scanpos++;
+        }
+        else if (hexstate == 1) {
+            c = buffer[scanpos];
+            if (((ishexorx(c) == 1) && (hexpair[0]=='0')) || (ishex(c)==1)){
+                hexpair[1] = c;
+                hexstate = 2;
+            }
+            scanpos++;
+        }
+        else if (hexstate == 2) {
+            if ((hexpair[0]=='0') && (hexpair[1]=='x')) {
+                hexstate = 0;
+            }
+            else { /* we have a valid hex pair */
+                nybble = 0;                
+                if ((((int)hexpair[0])>47) && (((int)hexpair[0])<58)){ /* 0-9 */
+                    nybble = (int)hexpair[0] - 48;
+                }
+                else if ((((int)hexpair[0])>64) && (((int)hexpair[0])<71)){ /* A-F */
+                    nybble = (int)hexpair[0] - 55;
+                }
+                else if ((((int)hexpair[0])>96) && (((int)hexpair[0])<103)){ /* a-f */
+                    nybble = (int)hexpair[0] - 87;
+                }
+
+                nybble = nybble << 4;
+
+                if ((((int)hexpair[1])>47) && (((int)hexpair[1])<58)){ /* 0-9 */
+                    byte = nybble + (int)hexpair[1] - 48;
+                }
+                else if ((((int)hexpair[1])>64) && (((int)hexpair[1])<71)){ /* A-F */
+                    byte = nybble + (int)hexpair[1] - 55;
+                }
+                else if ((((int)hexpair[1])>96) && (((int)hexpair[1])<103)){ /* a-f */
+                    byte = nybble + (int)hexpair[1] - 87;
+                }
+
+                buffer[outpos++] = (unsigned char)byte;
+                hexstate = 0;
+            }
+        }              
+    } while (scanpos <= len);
+
+    return outpos; /* return the number of bytes converted */
+}
+
 int fill_byte_queue(FILE *fp) {
     int len;
     int space;
     int i;
-    
-    space = QUEUESIZE-queue_size; /* Dont pull more data than needed */
-    if (space > BUFFSIZE) space = BUFFSIZE;
-    
-    /* ("  queue: space=%d\n",space); */
-    len = fread(buffer, (size_t)1,(size_t)space, fp);
-    if (len==0) {
-        /* printf("  queue: len = %d\n",len); */
-        return 0;
-    }
-    
-    for (i=0;i<len;i++) {
-        queue[(queue_end+i) % QUEUESIZE] = buffer[i];
-		update_monte_carlo(buffer[i]);
-    }
-    
-    filebytes += len;
-    
-    queue_size += len;
-    queue_end = ((queue_end + len) % QUEUESIZE);
-    
-    /* printf("  Queue : size %d,  start %d,  end %d\n",queue_size, queue_start, queue_end); */
-    return len;
+    int total_len;
+    total_len = 0;
+    /* Pull in a loop until there is left than BUFFSIZE space in thequeue */
+    do {
+        space = QUEUESIZE-queue_size; /* Dont pull more data than needed */
+        if (space > BUFFSIZE) space = BUFFSIZE;
+        
+        /* ("  queue: space=%d\n",space); */
+        len = fread(buffer, (size_t)1,(size_t)space, fp);
+        if (len==0) {
+            /* printf("  queue: len = %d\n",len); */
+            return total_len;
+        }
+
+        /* Convert hex buffer to binary if we are in hex mode */
+        if (textmode == 1) len = hex2bin(buffer,len); 
+       
+        /*  Transfer buffer to queue */
+        for (i=0;i<len;i++) {
+            queue[(queue_end+i) % QUEUESIZE] = buffer[i];
+
+            /* Call the monte carlo update that operated over bytes, not symbols */
+            update_monte_carlo(buffer[i]);
+        }
+        
+        filebytes += len;
+        
+        queue_size += len;
+        queue_end = ((queue_end + len) % QUEUESIZE);
+
+        total_len += len;
+    } while ((QUEUESIZE-queue_size) > BUFFSIZE);
+    return total_len;
 }
 
 /* pull symbol length bits off the start of the queue */
@@ -350,41 +480,42 @@ void init_entropy() {
     ent = 0.0;
 };
 
-void init_occurances() {
+void init_occurences() {
     uint64_t i;
     
-    occurance_total = 0;
+    occurence_total = 0;
     if (symbol_length > 32) {
         fprintf(stderr,"Error, symbol length cannot be longer than 32 bits for occurence count table\n");
         exit(1);
     }
-    occurance_size = ipow(2,symbol_length);
-    occurance_count = (uint64_t *) malloc (sizeof(uint64_t)*occurance_size);
-    /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurance_size));
+    occurence_size = ipow(2,symbol_length);
+    occurence_count = (uint64_t *) malloc (sizeof(uint64_t)*occurence_size);
+    /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurence_size));
      */
-    if (occurance_count == NULL) {
+    if (occurence_count == NULL) {
         #ifdef _WIN32
-        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
+        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurence_size));
         #elif __llvm__
-        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
+        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurence_size));
         #elif __linux__
-        fprintf(stderr,"Error, unable to allocate %ld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
+        fprintf(stderr,"Error, unable to allocate %ld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurence_size));
         #endif
         exit(1);
     }
 
-    for (i=0;i<occurance_size;i++) occurance_count[i] = 0;
+    for (i=0;i<occurence_size;i++) occurence_count[i] = 0;
 };
 
 void init_chisq() {
+    int i;
     chisq = 0.0;
-    chisq_prob = (double *) malloc (sizeof(double)*occurance_size);
-    /* printf("mallocating %lld bytes for chisq probability table\n", (sizeof(double)*occurance_size));
+    chisq_prob = (double *) malloc (sizeof(double)*occurence_size);
+    /* printf("mallocating %lld bytes for chisq probability table\n", (sizeof(double)*occurence_size));
     */
     if (chisq_prob == NULL) {
         exit(1);
     }
-    for (i=0;i<occurance_size;i++) chisq_prob[i] = 0.0;
+    for (i=0;i<occurence_size;i++) chisq_prob[i] = 0.0;
 };
 
 void init_filesize() {
@@ -430,9 +561,9 @@ void update_entropy(uint64_t symbol) {
 	/* nothin to do here */
 };
 
-void update_occurances(uint64_t symbol) {
-    occurance_count[symbol]++;
-    occurance_total++;
+void update_occurences(uint64_t symbol) {
+    occurence_count[symbol]++;
+    occurence_total++;
 };
 
 void update_chisq(uint64_t symbol) {
@@ -500,7 +631,7 @@ void finalize_mean() {
 void finalize_entropy() {
 	unsigned int eloop;
 	ent = 0.0;
-	for (eloop = 0; eloop < occurance_size; eloop++) {
+	for (eloop = 0; eloop < occurence_size; eloop++) {
 		if (chisq_prob[eloop] > 0.0) {
 			ent += (chisq_prob[eloop] * log10(1.0 / chisq_prob[eloop]) *  3.32192809488736234787);
 		}
@@ -513,7 +644,7 @@ void finalize_entropy() {
 	else printf("   Shannon Entropy = %f\n", ent);
 };
 
-void finalize_occurances() {
+void finalize_occurences() {
 };
 
 void finalize_chisq() {
@@ -522,35 +653,21 @@ void finalize_chisq() {
     double chisq_final_prob;
     
     double expected;
-    expected = (double)occurance_total / (double)occurance_size;
-    for (i=0; i < occurance_size; i++) {
-        diff = (double)(occurance_count[i]) - expected;
-        chisq_prob[i] = ((double)occurance_count[i])/occurance_total;
+    expected = (double)occurence_total / (double)occurence_size;
+    for (i=0; i < occurence_size; i++) {
+        diff = (double)(occurence_count[i]) - expected;
+        chisq_prob[i] = ((double)occurence_count[i])/occurence_total;
         chisq      += (diff*diff)/expected;
-        chisq_sum  += (double)(i * occurance_count[i]);
+        chisq_sum  += (double)(i * occurence_count[i]);
     }
-    
-    /*chisq_final_prob = pochisq(chisq, (occurance_size-1)); */
-    chisq_final_prob = chisqr(chisq, (occurance_size-1));
-    
-	result_chisq_count = occurance_total;
+   
+    chisq_final_prob = pochisq(chisq, (occurence_size-1)); 
+    /* chisq_final_prob = chisqr(chisq, (occurence_size-1));*/
+	result_chisq_count = occurence_total;
 	result_chisq_distribution = chisq;
 	result_chisq_percent = chisq_final_prob * 100;
 
 	return;
-
-    if (terse==1) {
-        printf(" ,%1.2f ",chisq_final_prob * 100); 
-    } else {
-        #ifdef _WIN32
-        printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
-        #elif __llvm__
-        printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
-        #elif __linux__
-        printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
-        #endif
-    }
-
 };
 
 void finalize_filesize() {
@@ -569,13 +686,6 @@ void finalize_monte_carlo() {
 
 	return;
 
-	if (terse == 1) {
-		printf(" ,%f ", montepi);
-	}
-	else {
-		printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", montepi, pierr);
-	}
-
 };
 
 void finalize_compression() {
@@ -587,12 +697,6 @@ void finalize_compression() {
 
 	return;
 
-	if (terse == 1) {
-		printf(", %f ", compression);
-	}
-	else {
-		printf("   Optimal compression would compress by %f percent\n", compression);
-	}
 };
 
 void finalize_scc() {
@@ -616,12 +720,6 @@ void finalize_scc() {
 
 	result_scc = scc;
 	return;
-
-    if (terse==1) {
-        printf("%08f",scc);
-    } else {
-        printf("   Serial Correlation = %f\n",scc);
-    }
 };
 
 /********
@@ -630,6 +728,8 @@ void finalize_scc() {
 
 int main(int argc, char** argv)
 {
+    int i;
+
     /* Defaults */
     symbol_length = 8;
     textmode = 1;
@@ -796,7 +896,7 @@ int main(int argc, char** argv)
 
 		init_mean();
 		init_entropy();
-		init_occurances();
+		init_occurences();
 		init_chisq();
 		init_filesize();
 		init_monte_carlo();
@@ -822,7 +922,7 @@ int main(int argc, char** argv)
 			/* Then update the algorithms using the symbol */
 			update_mean(symbol);
 			update_entropy(symbol);
-			update_occurances(symbol);
+			update_occurences(symbol);
 			update_chisq(symbol);
 			update_filesize(symbol);
 			/* Monte Carlo is different, it works on bytes, not symbols
@@ -835,7 +935,7 @@ int main(int argc, char** argv)
 		} while (1 == 1);
 
 		finalize_mean();
-		finalize_occurances();
+		finalize_occurences();
 		finalize_chisq();
 		finalize_entropy();
 		finalize_filesize();
@@ -853,6 +953,17 @@ int main(int argc, char** argv)
             #endif
 		}
 		else {
+
+            /* Output the occurence count if requested */
+            if (print_occurence==1) {
+                double fraction;
+                for (i=0; i<occurence_size;i++) {
+                    fraction = (double)occurence_count[i]/(double)occurence_total;
+                    printf("   Value %4d , frequency=%lu , fraction=%f\n", i, occurence_count[i], fraction);
+                }
+            }
+
+            /* Output the non terse results */
             printf("   Shannon IID Entropy = %f bits per symbol\n",result_entropy);
 		    printf("   Optimal compression would compress by %f percent\n", result_compression);
             #ifdef _WIN32
