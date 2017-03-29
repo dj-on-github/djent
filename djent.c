@@ -33,6 +33,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
+#include <ctype.h>
 
 #ifdef _WIN32
 #include "vsdjent/stdafx.h"
@@ -74,7 +75,7 @@ uint64_t filebytes;
 
 int opt;
 unsigned int symbol_length;
-int textmode;
+int hexmode;
 int print_occurence;
 int fold;
 
@@ -83,7 +84,6 @@ char *filename;
 FILE *fp;
 int terse_index;
 int not_eof;
-int escape;
 int64_t symbol;
 
 double ent;
@@ -148,7 +148,7 @@ void display_usage() {
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "  -l <n>    --symbol_length=<n> Treat incoming data symbols as bitlength n. Default is 8.\n");
-	fprintf(stderr, "  -b        --binary            Treat incoming data as binary. Equivalent to -l 1\n");
+	fprintf(stderr, "  -b        --binary            Treat incoming data as binary. Default bit length will be -l 1\n");
 	fprintf(stderr, "  -c        --occurence         Print symbol occurence counts\n");
 	fprintf(stderr, "  -w        --scc_wrap          Treat data as cyclical in SCC\n");
 	fprintf(stderr, "  -f        --fold              Fold uppercase letters to lower case\n");
@@ -172,13 +172,14 @@ uint64_t ipow(uint64_t base, uint64_t exp)
 
 /* Chi Square P value computation */
 
-double igf(double s, double z)
+/* doesn't work */
+double igamma(double s, double z)
 {
     double sc;
     double sum = 1.0;
     double nom = 1.0;
     double denom = 1.0;
-    int k;
+    int i;
     
     if(z < 0.0) return 0.0;
     
@@ -187,8 +188,7 @@ double igf(double s, double z)
     sc = sc * pow(z, s);
     sc = sc * exp(-z);
 
- 
-    for(k = 0; k < 200; k++) {
+    for(i = 0; i < 200; i++) {
 	    nom *= z;
 	    s++;
 	    denom *= s;
@@ -210,9 +210,9 @@ double chisqr(double crit, int df)
     x = crit * 0.5;
     if(df == 2) return exp(-1.0 * x);
     
-    printf("k=%f, x=%f\n",k,x);   
-    p = igf(k, x);
-    printf("igf(k,x)=%f\n",p); 
+    /*printf("k=%f, x=%f\n",k,x);  */ 
+    p = igamma(k, x);
+    /*printf("igf(k,x)=%f\n",p); */
     if(isnan(p) || isinf(p) || p <= 1e-8) return 1e-14;
 
 	p = p / tgamma(k);
@@ -386,8 +386,15 @@ int fill_byte_queue(FILE *fp) {
         }
 
         /* Convert hex buffer to binary if we are in hex mode */
-        if (textmode == 1) len = hex2bin(buffer,len); 
-       
+        if (hexmode == 1) len = hex2bin(buffer,len); 
+        
+        /* Fold upper case to lower */
+        if (fold==1) {
+            for (i=0;i<len;i++) {
+                buffer[i]=tolower(buffer[i]);
+            }
+        }
+        
         /*  Transfer buffer to queue */
         for (i=0;i<len;i++) {
             queue[(queue_end+i) % QUEUESIZE] = buffer[i];
@@ -732,14 +739,13 @@ int main(int argc, char** argv)
 
     /* Defaults */
     symbol_length = 8;
-    textmode = 1;
+    hexmode = 1;
     print_occurence = 0;
     fold = 0;
     terse = 0;
     use_stdin = 1;
     fp = NULL;
     terse_index = 0;
-    escape = 0;
     scc_wrap = 0;
 
 	#define ERRSTRINGSIZE 256
@@ -767,7 +773,7 @@ int main(int argc, char** argv)
         switch( opt ) {
             case 'b':
                 symbol_length = 1; /* binary mode treats newlines as data */
-                textmode = 0;
+                hexmode = 0;
                 break;
                 
             case 'l':
@@ -810,13 +816,13 @@ int main(int argc, char** argv)
 
 	/* Range check the var args */
 
-	escape = 0;
+    if ((fold==1) && (symbol_length != 8)) {
+            fprintf(stderr,"Error: Fold must be used with 8 bit word size\n");
+            exit(1);
+    }
+        
 	if (symbol_length < 1) {
-		printf("Error: Symbol length %d must not be 0 or negative. \n",symbol_length);
-		escape = 1;
-	}
-
-	if (escape==1) {
+		fprintf(stderr,"Error: Symbol length %d must not be 0 or negative. \n",symbol_length);
 		exit(1);
 	}
 
@@ -840,13 +846,13 @@ int main(int argc, char** argv)
         /* printf("OPTIND %d, filenumber %d, ARGC %d\n",optind,filenumber,argc); */
 		if (use_stdin==1) {
 			use_stdin = 1;
-			if (textmode != 1) freopen(NULL, "rb", stdin);
+			if (hexmode != 1) freopen(NULL, "rb", stdin);
 			fp = stdin;
 		}
 		else {
 			filename = argv[filenumber];
 
-			if (textmode == 1) {
+			if (hexmode == 1) {
 				if (terse == 0) printf(" opening %s as hex text\n", filename);
                 #ifdef _WIN32
 				if ((err = fopen_s(&fp, filename, "r")) != 0) {
@@ -959,7 +965,13 @@ int main(int argc, char** argv)
                 double fraction;
                 for (i=0; i<occurence_size;i++) {
                     fraction = (double)occurence_count[i]/(double)occurence_total;
+                    #ifdef _WIN32
+                    printf("   Value %4d , frequency=%llu , fraction=%f\n", i, occurence_count[i], fraction);
+                    #elif __llvm__
+                    printf("   Value %4d , frequency=%llu , fraction=%f\n", i, occurence_count[i], fraction);
+                    #elif __linux__
                     printf("   Value %4d , frequency=%lu , fraction=%f\n", i, occurence_count[i], fraction);
+                    #endif
                 }
             }
 
@@ -977,7 +989,10 @@ int main(int argc, char** argv)
 		    printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
             printf("   Serial Correlation = %f\n",result_scc);
 		}
-
+		
+        free(occurence_count);
+        free(chisq_prob);
+        
 		filenumber++;
 	} while ((filenumber < argc) && (use_stdin != 1));
 
