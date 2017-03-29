@@ -365,8 +365,10 @@ void init_occurances() {
     if (occurance_count == NULL) {
         #ifdef _WIN32
         fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
-        #else
+        #elif __llvm__
         fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
+        #elif __linux__
+        fprintf(stderr,"Error, unable to allocate %ld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurance_size));
         #endif
         exit(1);
     }
@@ -542,8 +544,10 @@ void finalize_chisq() {
     } else {
         #ifdef _WIN32
         printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
-        #else
+        #elif __llvm__
         printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
+        #elif __linux__
+        printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", occurance_total, chisq, chisq_final_prob * 100);
         #endif
     }
 
@@ -842,8 +846,10 @@ int main(int argc, char** argv)
 		if (terse == 1) {
             #ifdef _WIN32
 			printf("%d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
-            #else
+            #elif __llvm__
 			printf("%d,%12lld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+            #elif __linux__
+			printf("%d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
             #endif
 		}
 		else {
@@ -851,8 +857,10 @@ int main(int argc, char** argv)
 		    printf("   Optimal compression would compress by %f percent\n", result_compression);
             #ifdef _WIN32
             printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
-            #else
+            #elif __llvm__
             printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
+            #elif __linux__
+            printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
             #endif
             printf("   Mean = %f\n",result_mean);
 		    printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
@@ -862,7 +870,7 @@ int main(int argc, char** argv)
 		filenumber++;
 	} while ((filenumber < argc) && (use_stdin != 1));
 
-	/* Find out what the various compilers give us 
+	/* Find out what the various compilers give us
     #ifdef __llvm__
         printf("llvm\n");
     #endif
@@ -874,11 +882,15 @@ int main(int argc, char** argv)
     #ifdef __gcc__
         printf("gcc\n");
     #endif
+    #ifdef __linux__
+        printf("linux\n");
+    #endif
 	#ifdef _WIN32
 		printf("win32\n");
 	#endif
+    */
 	return 0;
-	*/
+
 }
 
 
