@@ -8,11 +8,11 @@ The improvements are:
 * The filename is present in CSV output
 * The symbol size can be any number of bits up to 32. ent was constrained to 1 or 8.
 * The SCC test can be either wrap-around or not wrap-around.
+* the SCC result can be given a lag value to get a LAG-N correlation coefficient.
 
 Planned improvements are:
 
 * Bit reversal options
-* Adding Lag-N Correlation Coefficient
 * Adding a mode to give exactly the same output as ent for compatibilty with tools that parse the ent output.
 
 ```
