@@ -78,7 +78,7 @@ uint64_t filebytes;
 int opt;
 unsigned int symbol_length;
 int hexmode;
-int print_occurence;
+int print_occurrence;
 int fold;
 int lagn;
 
@@ -91,9 +91,9 @@ int64_t symbol;
 
 double ent;
 
-uint64_t occurence_size;
-uint64_t *occurence_count;
-uint64_t occurence_total;
+uint64_t occurrence_size;
+uint64_t *occurrence_count;
+uint64_t occurrence_total;
 
 double chisq;
 double chisq_sum;
@@ -152,7 +152,7 @@ void display_usage() {
 
 	fprintf(stderr, "  -l <n>    --symbol_length=<n> Treat incoming data symbols as bitlength n. Default is 8.\n");
 	fprintf(stderr, "  -b        --binary            Treat incoming data as binary. Default bit length will be -l 1\n");
-	fprintf(stderr, "  -c        --occurence         Print symbol occurence counts\n");
+	fprintf(stderr, "  -c        --occurrence        Print symbol occurrence counts\n");
 	fprintf(stderr, "  -w        --scc_wrap          Treat data as cyclical in SCC\n");
 	fprintf(stderr, "  -n <n>    --lagn=<n>          Lag gap in SCC. Default=1\n");
 	fprintf(stderr, "  -f        --fold              Fold uppercase letters to lower case\n");
@@ -491,42 +491,42 @@ void init_entropy() {
     ent = 0.0;
 };
 
-void init_occurences() {
+void init_occurrences() {
     uint64_t i;
     
-    occurence_total = 0;
+    occurrence_total = 0;
     if (symbol_length > 32) {
-        fprintf(stderr,"Error, symbol length cannot be longer than 32 bits for occurence count table\n");
+        fprintf(stderr,"Error, symbol length cannot be longer than 32 bits for occurrence count table\n");
         exit(1);
     }
-    occurence_size = ipow(2,symbol_length);
-    occurence_count = (uint64_t *) malloc (sizeof(uint64_t)*occurence_size);
-    /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurence_size));
+    occurrence_size = ipow(2,symbol_length);
+    occurrence_count = (uint64_t *) malloc (sizeof(uint64_t)*occurrence_size);
+    /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurrence_size));
      */
-    if (occurence_count == NULL) {
+    if (occurrence_count == NULL) {
         #ifdef _WIN32
-        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurence_size));
+        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurrence count\n",(sizeof(uint64_t)*occurrence_size));
         #elif __llvm__
-        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurence_size));
+        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurrence count\n",(sizeof(uint64_t)*occurrence_size));
         #elif __linux__
-        fprintf(stderr,"Error, unable to allocate %ld bytes of memory for the occurence count\n",(sizeof(uint64_t)*occurence_size));
+        fprintf(stderr,"Error, unable to allocate %ld bytes of memory for the occurrence count\n",(sizeof(uint64_t)*occurrence_size));
         #endif
         exit(1);
     }
 
-    for (i=0;i<occurence_size;i++) occurence_count[i] = 0;
+    for (i=0;i<occurrence_size;i++) occurrence_count[i] = 0;
 };
 
 void init_chisq() {
     int i;
     chisq = 0.0;
-    chisq_prob = (double *) malloc (sizeof(double)*occurence_size);
-    /* printf("mallocating %lld bytes for chisq probability table\n", (sizeof(double)*occurence_size));
+    chisq_prob = (double *) malloc (sizeof(double)*occurrence_size);
+    /* printf("mallocating %lld bytes for chisq probability table\n", (sizeof(double)*occurrence_size));
     */
     if (chisq_prob == NULL) {
         exit(1);
     }
-    for (i=0;i<occurence_size;i++) chisq_prob[i] = 0.0;
+    for (i=0;i<occurrence_size;i++) chisq_prob[i] = 0.0;
 };
 
 void init_filesize() {
@@ -572,9 +572,9 @@ void update_entropy(uint64_t symbol) {
 	/* nothin to do here */
 };
 
-void update_occurences(uint64_t symbol) {
-    occurence_count[symbol]++;
-    occurence_total++;
+void update_occurrences(uint64_t symbol) {
+    occurrence_count[symbol]++;
+    occurrence_total++;
 };
 
 void update_chisq(uint64_t symbol) {
@@ -662,7 +662,7 @@ void finalize_mean() {
 void finalize_entropy() {
 	unsigned int eloop;
 	ent = 0.0;
-	for (eloop = 0; eloop < occurence_size; eloop++) {
+	for (eloop = 0; eloop < occurrence_size; eloop++) {
 		if (chisq_prob[eloop] > 0.0) {
 			ent += (chisq_prob[eloop] * log10(1.0 / chisq_prob[eloop]) *  3.32192809488736234787);
 		}
@@ -675,7 +675,7 @@ void finalize_entropy() {
 	else printf("   Shannon Entropy = %f\n", ent);
 };
 
-void finalize_occurences() {
+void finalize_occurrences() {
 };
 
 void finalize_chisq() {
@@ -684,17 +684,17 @@ void finalize_chisq() {
     double chisq_final_prob;
     
     double expected;
-    expected = (double)occurence_total / (double)occurence_size;
-    for (i=0; i < occurence_size; i++) {
-        diff = (double)(occurence_count[i]) - expected;
-        chisq_prob[i] = ((double)occurence_count[i])/occurence_total;
+    expected = (double)occurrence_total / (double)occurrence_size;
+    for (i=0; i < occurrence_size; i++) {
+        diff = (double)(occurrence_count[i]) - expected;
+        chisq_prob[i] = ((double)occurrence_count[i])/occurrence_total;
         chisq      += (diff*diff)/expected;
-        chisq_sum  += (double)(i * occurence_count[i]);
+        chisq_sum  += (double)(i * occurrence_count[i]);
     }
    
-    chisq_final_prob = pochisq(chisq, (occurence_size-1)); 
-    /* chisq_final_prob = chisqr(chisq, (occurence_size-1));*/
-	result_chisq_count = occurence_total;
+    chisq_final_prob = pochisq(chisq, (occurrence_size-1)); 
+    /* chisq_final_prob = chisqr(chisq, (occurrence_size-1));*/
+	result_chisq_count = occurrence_total;
 	result_chisq_distribution = chisq;
 	result_chisq_percent = chisq_final_prob * 100;
 
@@ -773,7 +773,7 @@ int main(int argc, char** argv)
     /* Defaults */
     symbol_length = 8;
     hexmode = 1;
-    print_occurence = 0;
+    print_occurrence = 0;
     fold = 0;
     terse = 0;
     use_stdin = 1;
@@ -794,7 +794,7 @@ int main(int argc, char** argv)
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
     { "binary", no_argument, NULL, 'b' },
-    { "occurence", no_argument, NULL, 'c' },
+    { "occurrence", no_argument, NULL, 'c' },
     { "fold", no_argument, NULL, 'f' },
     { "scc_wrap", no_argument, NULL, 'w' },
     { "lagn", required_argument, NULL, 'n' },
@@ -819,7 +819,7 @@ int main(int argc, char** argv)
                 break;
                 
             case 'c':
-                print_occurence = 1;
+                print_occurrence = 1;
                 break;
             
             case 'w':
@@ -941,7 +941,7 @@ int main(int argc, char** argv)
 
 		init_mean();
 		init_entropy();
-		init_occurences();
+		init_occurrences();
 		init_chisq();
 		init_filesize();
 		init_monte_carlo();
@@ -967,7 +967,7 @@ int main(int argc, char** argv)
 			/* Then update the algorithms using the symbol */
 			update_mean(symbol);
 			update_entropy(symbol);
-			update_occurences(symbol);
+			update_occurrences(symbol);
 			update_chisq(symbol);
 			update_filesize(symbol);
 			/* Monte Carlo is different, it works on bytes, not symbols
@@ -980,7 +980,7 @@ int main(int argc, char** argv)
 		} while (1 == 1);
 
 		finalize_mean();
-		finalize_occurences();
+		finalize_occurrences();
 		finalize_chisq();
 		finalize_entropy();
 		finalize_filesize();
@@ -999,17 +999,17 @@ int main(int argc, char** argv)
 		}
 		else {
 
-            /* Output the occurence count if requested */
-            if (print_occurence==1) {
+            /* Output the occurrence count if requested */
+            if (print_occurrence==1) {
                 double fraction;
-                for (i=0; i<occurence_size;i++) {
-                    fraction = (double)occurence_count[i]/(double)occurence_total;
+                for (i=0; i<occurrence_size;i++) {
+                    fraction = (double)occurrence_count[i]/(double)occurrence_total;
                     #ifdef _WIN32
-                    printf("   Value %4d , frequency=%llu , fraction=%f\n", i, occurence_count[i], fraction);
+                    printf("   Value %4d , frequency=%llu , fraction=%f\n", i, occurrence_count[i], fraction);
                     #elif __llvm__
-                    printf("   Value %4d , frequency=%llu , fraction=%f\n", i, occurence_count[i], fraction);
+                    printf("   Value %4d , frequency=%llu , fraction=%f\n", i, occurrence_count[i], fraction);
                     #elif __linux__
-                    printf("   Value %4d , frequency=%lu , fraction=%f\n", i, occurence_count[i], fraction);
+                    printf("   Value %4d , frequency=%lu , fraction=%f\n", i, occurrence_count[i], fraction);
                     #endif
                 }
             }
@@ -1029,7 +1029,7 @@ int main(int argc, char** argv)
             printf("   Serial Correlation = %f\n",result_scc);
 		}
 		
-        free(occurence_count);
+        free(occurrence_count);
         free(chisq_prob);
         
 		filenumber++;
