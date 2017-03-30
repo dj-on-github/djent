@@ -89,6 +89,9 @@ int terse_index;
 int not_eof;
 int64_t symbol;
 
+char inputlistfilename[256];
+int using_inputlistfile;
+
 double ent;
 
 uint64_t occurrence_size;
@@ -144,7 +147,7 @@ double  result_scc;
 void update_monte_carlo(unsigned char symbol);
 
 void display_usage() {
-	fprintf(stderr, "Usage: djent [-b] [-l <n>] [-c] [-u] [-h] [-f] [-t] [filename] [filename2] ...\n");
+	fprintf(stderr, "Usage: djent [-b] [-l <n>] [-c] [-u] [-h] [-f] [-t] [-i <input file list filename>] [filename] [filename2] ...\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Compute statistics of random data.\n");
 	fprintf(stderr, "  Author: David Johnston, dj@deadhat.com\n");
@@ -156,8 +159,23 @@ void display_usage() {
 	fprintf(stderr, "  -w        --scc_wrap          Treat data as cyclical in SCC\n");
 	fprintf(stderr, "  -n <n>    --lagn=<n>          Lag gap in SCC. Default=1\n");
 	fprintf(stderr, "  -f        --fold              Fold uppercase letters to lower case\n");
+	fprintf(stderr, "  -i <filename>  --inputfilelist=<filename> Read list of filenames from <filename>\n");
 	fprintf(stderr, "  -t        --terse             Terse output\n");
 	fprintf(stderr, "  -h or -u  --help              Print this text\n");
+}
+
+int count_lines_in_file(char *filename) {
+     FILE *fp = fopen(filename,"r");
+     int ch=0;
+     int lines=0;
+
+     if (fp == NULL) return 0;
+     lines++;
+     while ((ch = fgetc(fp)) != EOF) {
+         if ((char)ch == '\n') lines++;
+     }
+     fclose(fp);
+     return lines;
 }
 
 uint64_t ipow(uint64_t base, uint64_t exp)
@@ -781,6 +799,7 @@ int main(int argc, char** argv)
     terse_index = 0;
     scc_wrap = 0;
     lagn = 1;
+    using_inputlistfile = 0;
     
 	#define ERRSTRINGSIZE 256
     #ifdef _WIN32
@@ -789,13 +808,14 @@ int main(int argc, char** argv)
     #endif
     int filenumber = 0;
     
-    char optString[] = "bcwfthun:l:";
+    char optString[] = "bcwfthui:n:l:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
     { "binary", no_argument, NULL, 'b' },
     { "occurrence", no_argument, NULL, 'c' },
     { "fold", no_argument, NULL, 'f' },
+    { "inputlistfile", required_argument, NULL, 'i' },
     { "scc_wrap", no_argument, NULL, 'w' },
     { "lagn", required_argument, NULL, 'n' },
     { "terse", no_argument, NULL, 't' },
@@ -817,7 +837,11 @@ int main(int argc, char** argv)
                                                * as data.
                                                */
                 break;
-                
+            case 'i':
+                strncpy(inputlistfilename,optarg,255);
+                using_inputlistfile = 1;
+                break;
+ 
             case 'c':
                 print_occurrence = 1;
                 break;
@@ -868,7 +892,7 @@ int main(int argc, char** argv)
     init_byte_queue();
     
     /* Loop through the filenames */
-	if (optind==argc) {
+	if ((optind==argc) && (using_inputlistfile==0)) {
 		use_stdin = 1;
 	}
 	else {
@@ -878,6 +902,53 @@ int main(int argc, char** argv)
 	terse_index = 0;
 	/* if (use_stdin == 0) { */
 	filenumber = optind;
+
+    char *filelist;
+    int lines;
+    int lineno;
+    FILE *ifp;
+    int filenamecount = 0;
+    char * res;
+    char line[256];
+
+    filelist = (char*)0;
+    /* build the list of filenames from the input list file */
+    if (using_inputlistfile==1) {
+        lines = count_lines_in_file(inputlistfilename);
+        ifp = fopen(inputlistfilename,"r");
+        if (ifp==NULL) {
+            fprintf(stderr,"Error: Cannot open %s for reading\n",inputlistfilename);
+            exit(1);
+        }
+        
+        filelist = malloc(sizeof(char *)*256*lines);
+        
+        if (filelist==NULL) {
+            fprintf(stderr,"Error: Cannot allocate memory for filename list from input file list file %s\n",inputlistfilename);
+            exit(1);
+        }
+         
+        for (lineno=0;lineno<lines;lineno++) {
+            res = fgets(line, 256, ifp);
+            if (res != NULL) {
+                /* mute the newlines from the file*/
+                for (i = 0;i<256;i++) {
+                    if (line[i]=='\n') line[i]=0;
+                }
+
+                /* Grab the file names, skipping the ones beginning with # */
+                strncpy(&(filelist[256*filenamecount]),line,256);
+                /*printf(" Scanning file list, got :%s:\n",&(filelist[256*filenamecount]));*/
+                if (line[0]!='#') filenamecount++; /* ignore lines beginning with # */ 
+            }
+        }
+        fclose(ifp);
+        if (filenamecount==0) {
+            fprintf(stderr,"Error: Did not file any filenames in input file list file %s\n",inputlistfilename);
+            exit(1);
+        }
+        filenumber = 0; 
+    }
 
 	do {
 		terse_index++;
@@ -889,7 +960,13 @@ int main(int argc, char** argv)
 			fp = stdin;
 		}
 		else {
-			filename = argv[filenumber];
+            if (using_inputlistfile==0) {
+			    filename = argv[filenumber];
+            } else {
+                /* Get file from input file list file */ 
+                filename = &(filelist[256*filenumber]);
+                /*printf("FILENUMBER = %d , Filename = %s\n",filenumber,filename);*/
+            }
 
 			if (hexmode == 1) {
 				if (terse == 0) printf(" opening %s as hex text\n", filename);
@@ -1028,12 +1105,20 @@ int main(int argc, char** argv)
 		    printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
             printf("   Serial Correlation = %f\n",result_scc);
 		}
-		
+
+        /* Free the per-loop mallocs */		
         free(occurrence_count);
         free(chisq_prob);
-        
+    
+        if (fp != stdin) fclose(fp); 
 		filenumber++;
-	} while ((filenumber < argc) && (use_stdin != 1));
+	} while (
+                    ((filenumber < argc) && (use_stdin != 1) && (using_inputlistfile!=1)) /* still going through argv */
+                ||
+                    ((filenumber < filenamecount) && (using_inputlistfile==1)) /* still going through file list file */
+            );
+    /* Free the per-run malloc */
+    free(filelist);
 
 	/* Find out what the various compilers give us
     #ifdef __llvm__
