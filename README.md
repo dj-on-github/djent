@@ -18,7 +18,7 @@ Planned improvements are:
 
 ```
 ./djent -h
-Usage: djent [-b] [-l <n>] [-c] [-u] [-h] [-f] [-t] [-s] [-i <input file list filename>] [filename] [filename2] ...
+Usage: djent [-b] [-r] [-l <n>] [-c] [-u] [-h] [-f] [-t] [-s] [-i <input file list filename>] [filename] [filename2] ...
 
 Compute statistics of random data.
   Author: David Johnston, dj@deadhat.com
@@ -26,6 +26,7 @@ Compute statistics of random data.
   -i <filename>  --inputfilelist=<filename> Read list of filenames from <filename>
   -l <n>         --symbol_length=<n>        Treat incoming data symbols as bitlength n. Default is 8.
   -b             --binary                   Treat incoming data as binary. Default bit length will be -l 1
+  -r             --byte_reverse             Reverse the bit order in incoming bytes
   -c             --occurrence               Print symbol occurrence counts
   -w             --scc_wrap                 Treat data as cyclical in SCC
   -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1
@@ -41,11 +42,13 @@ Compute statistics of random data.
    * With the -b option djent switches to binary reads in each byte as binary with a symbol length of 1.
    * To analyze ascii text instead of hex ascii, you need djent to treat each byte as a separate symbol, so
      use binary mode with a symbol length of 8. I.E. djent -b -l 8 <filename>
+   * By default djent treats the MSB of each byte as the first. This can be switched so that djent treats
+     the LSB as the first bit in each byte using the -r option.
    * Terse output is requested using -t. This outputs in CSV format. The first line is the header. If
      multiple files are provided, there will be one line of CSV output per file in addition to the header.
      The CSV header can be suppressed with -s.
    * To analyze multiple files, just give multiple file names on the command line. To read data in from
-     stdin, don't provide a filename and pipe the data in. E.G. cat <datafile> | djent
+     the command line, don't provide a filename and pipe the data in. <datasource> | djent
    * To compute the statistics, djent builds a frequency table of the symbols. This can be displayed
      using the -c option. The size of this table is what limits the the maximum symbol size. For each
      of the 2^n symbols, a 64 bit entry in a table is created. So for n=32, that's 32GBytes so the ability
@@ -75,7 +78,6 @@ Compute statistics of random data.
 
    Analyze ascii symbols - Read in binary and set symbol size to 8.
      djent -b -l 8  textfile.txt
-
 
 ```
   
