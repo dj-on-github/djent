@@ -73,6 +73,7 @@ uint64_t symbol_count;
 uint64_t mean_total;
 
 int terse;
+int suppress_header;
 uint64_t filebytes;
 
 int opt;
@@ -161,6 +162,7 @@ void display_usage() {
 	fprintf(stderr, "  -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1\n");
 	fprintf(stderr, "  -f             --fold                     Fold uppercase letters to lower case\n");
 	fprintf(stderr, "  -t             --terse                    Terse output\n");
+	fprintf(stderr, "  -s             --suppress_header          Suppress the header in terse output\n");
 	fprintf(stderr, "  -h or -u       --help                     Print this text\n");
 
     fprintf(stderr, "\n Notes\n");
@@ -172,6 +174,7 @@ void display_usage() {
     fprintf(stderr,   "     use binary mode with a symbol length of 8. I.E. djent -b -l 8 <filename>\n");
     fprintf(stderr,   "   * Terse output is requested using -t. This outputs in CSV format. The first line is the header. If\n");
     fprintf(stderr,   "     multiple files are provided, there will be one line of CSV output per file in addition to the header.\n");
+    fprintf(stderr,   "     The CSV header can be suppressed with -s.\n");
     fprintf(stderr,   "   * To analyze multiple files, just give multiple file names on the command line. To read data in from\n");
     fprintf(stderr,   "     the command line, don't provide a filename and pipe the data in. <datasource> | djent\n");
     fprintf(stderr,   "   * To compute the statistics, djent builds a frequency table of the symbols. This can be displayed\n");
@@ -850,6 +853,7 @@ int main(int argc, char** argv)
     scc_wrap = 0;
     lagn = 1;
     using_inputlistfile = 0;
+    suppress_header = 0;
     
 	#define ERRSTRINGSIZE 256
     #ifdef _WIN32
@@ -858,7 +862,7 @@ int main(int argc, char** argv)
     #endif
     int filenumber = 0;
     
-    char optString[] = "bcwfthui:n:l:";
+    char optString[] = "bcwfthusi:n:l:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
@@ -869,6 +873,7 @@ int main(int argc, char** argv)
     { "scc_wrap", no_argument, NULL, 'w' },
     { "lagn", required_argument, NULL, 'n' },
     { "terse", no_argument, NULL, 't' },
+    { "suppress_header", no_argument, NULL, 's' },
     { "help", no_argument, NULL, 'h' },
     { NULL, no_argument, NULL, 0 }
     };
@@ -912,6 +917,10 @@ int main(int argc, char** argv)
                 terse = 1;
                 break;
             
+            case 's':
+                suppress_header = 1;
+                break;
+
             case 'u':    
             case 'h':   /* fall-through is intentional */
             case '?':
@@ -1059,7 +1068,7 @@ int main(int argc, char** argv)
 
 
 		/* Print terse header if necessary */
-		if ((terse == 1) && (terse_index == 1)) {
+		if ((terse == 1) && (terse_index == 1) && (suppress_header==0)) {
 			printf("   0,  File-bytes,    Entropy,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation, Filename\n");
 		}
 
