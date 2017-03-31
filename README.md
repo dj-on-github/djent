@@ -45,7 +45,7 @@ Compute statistics of random data.
      multiple files are provided, there will be one line of CSV output per file in addition to the header.
      The CSV header can be suppressed with -s.
    * To analyze multiple files, just give multiple file names on the command line. To read data in from
-     the command line, don't provide a filename and pipe the data in. <datasource> | djent
+     stdin, don't provide a filename and pipe the data in. E.G. cat <datafile> | djent
    * To compute the statistics, djent builds a frequency table of the symbols. This can be displayed
      using the -c option. The size of this table is what limits the the maximum symbol size. For each
      of the 2^n symbols, a 64 bit entry in a table is created. So for n=32, that's 32GBytes so the ability
