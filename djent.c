@@ -148,7 +148,7 @@ double  result_scc;
 void update_monte_carlo(unsigned char symbol);
 
 void display_usage() {
-	fprintf(stderr, "Usage: djent [-b] [-l <n>] [-c] [-u] [-h] [-f] [-t] [-i <input file list filename>] [filename] [filename2] ...\n");
+	fprintf(stderr, "Usage: djent [-b] [-l <n>] [-c] [-u] [-h] [-f] [-t] [-s] [-i <input file list filename>] [filename] [filename2] ...\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Compute statistics of random data.\n");
 	fprintf(stderr, "  Author: David Johnston, dj@deadhat.com\n");
