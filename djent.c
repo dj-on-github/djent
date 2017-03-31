@@ -153,15 +153,53 @@ void display_usage() {
 	fprintf(stderr, "  Author: David Johnston, dj@deadhat.com\n");
 	fprintf(stderr, "\n");
 
-	fprintf(stderr, "  -l <n>    --symbol_length=<n> Treat incoming data symbols as bitlength n. Default is 8.\n");
-	fprintf(stderr, "  -b        --binary            Treat incoming data as binary. Default bit length will be -l 1\n");
-	fprintf(stderr, "  -c        --occurrence        Print symbol occurrence counts\n");
-	fprintf(stderr, "  -w        --scc_wrap          Treat data as cyclical in SCC\n");
-	fprintf(stderr, "  -n <n>    --lagn=<n>          Lag gap in SCC. Default=1\n");
-	fprintf(stderr, "  -f        --fold              Fold uppercase letters to lower case\n");
 	fprintf(stderr, "  -i <filename>  --inputfilelist=<filename> Read list of filenames from <filename>\n");
-	fprintf(stderr, "  -t        --terse             Terse output\n");
-	fprintf(stderr, "  -h or -u  --help              Print this text\n");
+	fprintf(stderr, "  -l <n>         --symbol_length=<n>        Treat incoming data symbols as bitlength n. Default is 8.\n");
+	fprintf(stderr, "  -b             --binary                   Treat incoming data as binary. Default bit length will be -l 1\n");
+	fprintf(stderr, "  -c             --occurrence               Print symbol occurrence counts\n");
+	fprintf(stderr, "  -w             --scc_wrap                 Treat data as cyclical in SCC\n");
+	fprintf(stderr, "  -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1\n");
+	fprintf(stderr, "  -f             --fold                     Fold uppercase letters to lower case\n");
+	fprintf(stderr, "  -t             --terse                    Terse output\n");
+	fprintf(stderr, "  -h or -u       --help                     Print this text\n");
+
+    fprintf(stderr, "\n Notes\n");
+    fprintf(stderr,   "   * By default djent is in hex mode where it reads ascii hex data and converts it to binary to analyze.\n");
+    fprintf(stderr,   "     In hex mode, the symbol length defaults to 8, so normal hex files can be treated as a representation\n");
+    fprintf(stderr,   "     of bytes. The symbol length can be changed to any value between 1 and 32 bits using the -l <n> option.\n");
+    fprintf(stderr,   "   * With the -b option djent switches to binary reads in each byte as binary with a symbol length of 1.\n");
+    fprintf(stderr,   "   * To analyze ascii text instead of hex ascii, you need djent to treat each byte as a separate symbol, so\n");
+    fprintf(stderr,   "     use binary mode with a symbol length of 8. I.E. djent -b -l 8 <filename>\n");
+    fprintf(stderr,   "   * Terse output is requested using -t. This outputs in CSV format. The first line is the header. If\n");
+    fprintf(stderr,   "     multiple files are provided, there will be one line of CSV output per file in addition to the header.\n");
+    fprintf(stderr,   "   * To analyze multiple files, just give multiple file names on the command line. To read data in from\n");
+    fprintf(stderr,   "     the command line, don't provide a filename and pipe the data in. <datasource> | djent\n");
+    fprintf(stderr,   "   * To compute the statistics, djent builds a frequency table of the symbols. This can be displayed\n");
+    fprintf(stderr,   "     using the -c option. The size of this table is what limits the the maximum symbol size. For each\n");
+    fprintf(stderr,   "     of the 2^n symbols, a 64 bit entry in a table is created. So for n=32, that's 32GBytes so the ability\n");
+    fprintf(stderr,   "     to handle large symbol sizes is limited by the available memory and the per process allocation limit.\n");
+    fprintf(stderr,   "   * The serial correlation coefficient is not wrap around by default, meaning that it does not compare\n");
+    fprintf(stderr,   "     the last value in the data with the first. To get wrap around behaviour, use the -w option.\n");
+    fprintf(stderr,   "   * The Lag-N correlation coefficient can be computed by using the -n <n> option. This causes the SCC\n");
+    fprintf(stderr,   "     computation to compare each Xth symbol with the (X+n)th symbol instead of the (X+1)th symbol.\n");
+    fprintf(stderr,   "     If you use wrap around with Lag-N, then the wrap around will reach n bits further into the start\n");
+    fprintf(stderr,   "     of the sequence.\n");
+    fprintf(stderr,   "   * Instead of providing data file names on the command line, djent can be told to read a list of files\n");
+    fprintf(stderr,   "     from a text file. The file must have one filename per line. Lines beginning with # will be ignored.\n");
+    fprintf(stderr,   "     Use the -i <filename> option to request that djent reads the file list from <filename>.\n");
+
+    fprintf(stderr, "\n Examples\n");
+    fprintf(stderr,   "   Print this help\n");
+    fprintf(stderr,   "     djent -h\n\n");
+    fprintf(stderr,   "   Analyze hex file from stdin\n");
+    fprintf(stderr,   "     cat datafile.hex | djent\n\n");
+    fprintf(stderr,   "   Analyze binary file\n");
+    fprintf(stderr,   "     djent -b datafile.bin\n\n");
+    fprintf(stderr,   "   Analyze several files with CSV output\n");
+    fprintf(stderr,   "     djent -t data1.hex data2.hex data3.hex\n\n");
+    fprintf(stderr,   "   Analyze ascii symbols - Read in binary and set symbol size to 8.\n");
+    fprintf(stderr,   "     djent -b -l 8  textfile.txt\n");
+
 }
 
 int count_lines_in_file(char *filename) {
