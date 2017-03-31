@@ -258,51 +258,119 @@ uint64_t ipow(uint64_t base, uint64_t exp)
 
 /* Chi Square P value computation */
 
-/* doesn't work */
-double igamma(double s, double z)
-{
-    double sc;
-    double sum = 1.0;
-    double nom = 1.0;
-    double denom = 1.0;
-    int i;
-    
-    if(z < 0.0) return 0.0;
-    
-    sc = (1.0 / s);
-    
-    sc = sc * pow(z, s);
-    sc = sc * exp(-z);
+double zcdf(double z) {
+    double w;
+    double x;
+    double y;
+    double result;
 
-    for(i = 0; i < 200; i++) {
-	    nom *= z;
-	    s++;
-	    denom *= s;
-	    sum += (nom / denom);
+    if (z == 0.0) return 0.5;
+
+    y = fabs(z)/2.0;
+
+    if (y >= 3.0) return 0.0;
+    
+    if (y < 1.0) {
+        w = y * y;
+        x =         0.000124818987;
+        x = x * w - 0.001075204047;
+        x = x * w + 0.005198775019;
+        x = x * w - 0.019198292004;
+        x = x * w + 0.059054035642;
+        x = x * w - 0.151968751364;
+        x = x * w + 0.319152932694;
+        x = x * w - 0.531923007300;
+        x = x * w + 0.797884560593;
+        x = x * 2.0 * y;
+    } else {
+        y -= 2.0;
+        x =        -0.000045255659;
+        x = x * y + 0.000152529290;
+        x = x * y - 0.000019538132;
+        x = x * y - 0.000676904986;
+        x = x * y + 0.001390604284;
+        x = x * y - 0.000794620820;
+        x = x * y - 0.002034254874;
+        x = x * y + 0.006549791214;
+        x = x * y - 0.010557625006;
+        x = x * y + 0.011630447319;
+        x = x * y - 0.009279453341;
+        x = x * y + 0.005353579108;
+        x = x * y - 0.002141268741;
+        x = x * y + 0.000535310849;
+        x = x * y + 0.999936657524;
     }
- 
-    return sum * sc;
+
+
+    if (z > 0.0) {
+        result = (x/2.0)+0.5;
+    } else {
+        result = (0.5 - (x/2.0));
+    }
+
+    return result;
 }
 
-double chisqr(double crit, int df)
-{
-    double k;
-    double x;
-    double p;
-    if (crit < 0.0) return 0.0;
-    if (df < 1) return 0.0;
-    
-    k = df * 0.5;
-    x = crit * 0.5;
-    if(df == 2) return exp(-1.0 * x);
-    
-    /*printf("k=%f, x=%f\n",k,x);  */ 
-    p = igamma(k, x);
-    /*printf("igf(k,x)=%f\n",p); */
-    if(isnan(p) || isinf(p) || p <= 1e-8) return 1e-14;
+#define LOG_SQRT_PI 0.5723649429247000870717135 /* log (sqrt (pi)) */
+#define I_SQRT_PI   0.5641895835477562869480795 /* 1 / sqrt (pi) */
+#define BIGX        20.0         /* max value to represent exp (x) */
+#define ex(x)       (((x) < -BIGX) ? 0.0 : exp(x))
 
-	p = p / tgamma(k);
-    return (1.0 - p);
+double chisqp(double ax, int df) {
+    double x;
+    double a;
+    double y;
+    double s;
+    double e;
+    double c;
+    double z;
+    int dfeven;
+    
+    dfeven=0;
+    if ((df % 2)==0) dfeven = 1;
+
+    x = ax;
+
+    if (x <= 0.0 || df < 1) return 1.0;
+
+    a = x/2.0;
+
+    if (df > 1)  y = ex(-a);
+
+    if (dfeven == 1) s = y;
+    else s = 2.0 * zcdf(-sqrt(x));
+
+    if (df > 2) {
+        x = (df - 1.0)/2.0;
+        if (dfeven==1) z = 1.0;
+        else z = 0.5;
+
+        if (a > BIGX) {
+            if (dfeven==1) e = 0.0;
+            else e = LOG_SQRT_PI;
+            
+            c = log(a);
+            
+            while (z <= x) {
+                e = log(z) + e;
+                s += ex(c * z - a - e);
+                z += 1.0;
+            }
+            return (s);
+        } else {
+        if (dfeven==1) e = 1.0;
+        else e = (I_SQRT_PI / sqrt(a));
+        c = 0.0;
+        while (z <= x) {
+            e = e * (a / z);
+            c = c + e;
+            z += 1.0;
+            }
+        return (c * y + s);
+        }
+    } else {
+        return s;
+    }
 }
 
 /* The queue
@@ -790,8 +858,7 @@ void finalize_chisq() {
         chisq_sum  += (double)(i * occurrence_count[i]);
     }
    
-    chisq_final_prob = pochisq(chisq, (occurrence_size-1)); 
-    /* chisq_final_prob = chisqr(chisq, (occurrence_size-1));*/
+    chisq_final_prob = chisqp(chisq, (occurrence_size-1)); 
 	result_chisq_count = occurrence_total;
 	result_chisq_distribution = chisq;
 	result_chisq_percent = chisq_final_prob * 100;
