@@ -360,6 +360,18 @@ void init_hex2bin() {
     hexstate = 0;
 }
 
+/* 
+ * This converts input hex text to binary. It uses a little
+ * state machine to pull in 2 characters then convert them
+ * to a byte. The state machine state is maintained across
+ * calls so we do not lose values at read buffer boundaries.
+ *
+ * In the processing of the second character, an x will be
+ * accepted if the first character is 0, so we get '0x'.
+ * This allows the 0x prefixes to be eliminated without
+ * accidentally treating the 0 as part of the data.
+ */
+ 
 int hex2bin(unsigned char *buffer, int len) {
     int outpos = 0;
     int scanpos = 0;
