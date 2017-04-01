@@ -1266,7 +1266,7 @@ int main(int argc, char** argv)
                 filename = &(filelist[256*filenumber]);
                 /*printf("FILENUMBER = %d , Filename = %s\n",filenumber,filename);*/
             }
-            parse_the_filename(filename);
+            if (parse_filename==1) parse_the_filename(filename);
 
 			if (hexmode == 1) {
 				if (terse == 0) printf(" opening %s as hex text\n", filename);
