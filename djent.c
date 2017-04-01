@@ -1406,6 +1406,12 @@ int main(int argc, char** argv)
             }
 
             /* Output the non terse results */
+            if (parse_filename==1) {
+            printf("   Device ID   : %s\n",deviceid);
+            printf("   Process     : %s\n",process);
+            printf("   Voltage     : %0.2lfV\n",voltage);
+            printf("   Temperature : %0.2lfC\n",temperature);
+            }
             printf("   Shannon IID Entropy = %f bits per symbol\n",result_entropy);
 		    printf("   Optimal compression would compress by %f percent\n", result_compression);
             #ifdef _WIN32
