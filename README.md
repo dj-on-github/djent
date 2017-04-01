@@ -10,20 +10,22 @@ The improvements are:
 * The SCC test can be either wrap-around or not wrap-around.
 * The SCC result can be given a lag value to get a LAG-N correlation coefficient.
 * A list of filenames to analyze can be read from a text file using -i filename.
+* Test condition details (Volts, temp, id etc.) can be parsed from the filename and included in output. 
 
 Planned improvements are:
 
-* Bit reversal options
 * Adding a mode to give exactly the same output as ent for compatibilty with tools that parse the ent output.
 
 ```
-./djent -h
-Usage: djent [-b] [-r] [-l <n>] [-c] [-u] [-h] [-f] [-t] [-s] [-i <input file list filename>] [filename] [filename2] ...
+djent -h
+Usage: djent [-b] [-r] [-l <n>] [-p] [-c] [-u] [-h] [-f] [-t] [-s] [-i <input file list filename>] [filename] [filename2] ...
 
 Compute statistics of random data.
   Author: David Johnston, dj@deadhat.com
 
   -i <filename>  --inputfilelist=<filename> Read list of filenames from <filename>
+  -p             --parse_filename           Extract CID, Process, Voltage and Temperature from filename.
+                                            The values will be included in the output.
   -l <n>         --symbol_length=<n>        Treat incoming data symbols as bitlength n. Default is 8.
   -b             --binary                   Treat incoming data as binary. Default bit length will be -l 1
   -r             --byte_reverse             Reverse the bit order in incoming bytes
@@ -49,6 +51,10 @@ Compute statistics of random data.
      The CSV header can be suppressed with -s.
    * To analyze multiple files, just give multiple file names on the command line. To read data in from
      the command line, don't provide a filename and pipe the data in. <datasource> | djent
+   * The parse filename option =p picks takes four patterns from the filename to include in the output,
+     This is so that it is easy to plot test conditions that are commonly encoded in a filename.
+     Fields are delimited by uderscores. The four patters for CID, process, Voltage and Temperature are:
+     _CID-<componentID>_ , _PROC-<process info>_, _<x>p<y>V_ and _<x>p<y>C_ . 'p' is the decimal point.
    * To compute the statistics, djent builds a frequency table of the symbols. This can be displayed
      using the -c option. The size of this table is what limits the the maximum symbol size. For each
      of the 2^n symbols, a 64 bit entry in a table is created. So for n=32, that's 32GBytes so the ability
@@ -79,6 +85,8 @@ Compute statistics of random data.
    Analyze ascii symbols - Read in binary and set symbol size to 8.
      djent -b -l 8  textfile.txt
 
+   Analyze binary file with parsable filename.
+     djent -b -t -p  rawdata_CID-X23_PROC-TTFT_1p2V_25p0C_.bin
 ```
   
 

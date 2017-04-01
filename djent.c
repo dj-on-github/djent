@@ -176,7 +176,7 @@ const unsigned char byte_reverse_table[] = {
 void update_monte_carlo(unsigned char symbol);
 
 void display_usage() {
-	fprintf(stderr, "Usage: djent [-b] [-r] [-l <n>] [-c] [-u] [-h] [-f] [-t] [-s] [-i <input file list filename>] [filename] [filename2] ...\n");
+	fprintf(stderr, "Usage: djent [-b] [-r] [-l <n>] [-p] [-c] [-u] [-h] [-f] [-t] [-s] [-i <input file list filename>] [filename] [filename2] ...\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Compute statistics of random data.\n");
 	fprintf(stderr, "  Author: David Johnston, dj@deadhat.com\n");
@@ -213,7 +213,7 @@ void display_usage() {
     fprintf(stderr,   "   * The parse filename option =p picks takes four patterns from the filename to include in the output,\n");
     fprintf(stderr,   "     This is so that it is easy to plot test conditions that are commonly encoded in a filename.\n");
     fprintf(stderr,   "     Fields are delimited by uderscores. The four patters for CID, process, Voltage and Temperature are:\n");
-    fprintf(stderr,   "       _CID-<componentID>_ , _PROC-<process info>_, _<x>p<y>V\n and _<x>p<y>C\n_ . 'p' is the decimal point.\n");
+    fprintf(stderr,   "     _CID-<componentID>_ , _PROC-<process info>_, _<x>p<y>V_ and _<x>p<y>C_ . 'p' is the decimal point.\n");
     fprintf(stderr,   "   * To compute the statistics, djent builds a frequency table of the symbols. This can be displayed\n");
     fprintf(stderr,   "     using the -c option. The size of this table is what limits the the maximum symbol size. For each\n");
     fprintf(stderr,   "     of the 2^n symbols, a 64 bit entry in a table is created. So for n=32, that's 32GBytes so the ability\n");
@@ -238,7 +238,7 @@ void display_usage() {
     fprintf(stderr,   "   Analyze several files with CSV output\n");
     fprintf(stderr,   "     djent -t data1.hex data2.hex data3.hex\n\n");
     fprintf(stderr,   "   Analyze ascii symbols - Read in binary and set symbol size to 8.\n");
-    fprintf(stderr,   "     djent -b -l 8  textfile.txt\n");
+    fprintf(stderr,   "     djent -b -l 8  textfile.txt\n\n");
     fprintf(stderr,   "   Analyze binary file with parsable filename.\n");
     fprintf(stderr,   "     djent -b -t -p  rawdata_CID-X23_PROC-TTFT_1p2V_25p0C_.bin\n");
 
