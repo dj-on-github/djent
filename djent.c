@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <regex.h>
 
 #ifdef _WIN32
 #include "vsdjent/stdafx.h"
@@ -44,7 +45,7 @@
 #define  errno_t int
 #endif
 
-
+#define MAX_ERROR_MSG 0x1000
 #define QUEUESIZE 4096
 #define BUFFSIZE  2048
 
@@ -76,6 +77,12 @@ int terse;
 int suppress_header;
 uint64_t filebytes;
 
+double voltage;
+double temperature;
+unsigned char deviceid[256];
+unsigned char process[256];
+unsigned char processing[256];
+
 int opt;
 unsigned int symbol_length;
 int hexmode;
@@ -83,6 +90,7 @@ int print_occurrence;
 int fold;
 int lagn;
 int byte_reverse;
+int parse_filename;
 
 int use_stdin;
 char *filename;
@@ -175,6 +183,8 @@ void display_usage() {
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "  -i <filename>  --inputfilelist=<filename> Read list of filenames from <filename>\n");
+	fprintf(stderr, "  -p             --parse_filename           Extract CID, Process, Voltage and Temperature from filename.\n");
+	fprintf(stderr, "                                            The values will be included in the output.\n");
 	fprintf(stderr, "  -l <n>         --symbol_length=<n>        Treat incoming data symbols as bitlength n. Default is 8.\n");
 	fprintf(stderr, "  -b             --binary                   Treat incoming data as binary. Default bit length will be -l 1\n");
 	fprintf(stderr, "  -r             --byte_reverse             Reverse the bit order in incoming bytes\n");
@@ -200,6 +210,10 @@ void display_usage() {
     fprintf(stderr,   "     The CSV header can be suppressed with -s.\n");
     fprintf(stderr,   "   * To analyze multiple files, just give multiple file names on the command line. To read data in from\n");
     fprintf(stderr,   "     the command line, don't provide a filename and pipe the data in. <datasource> | djent\n");
+    fprintf(stderr,   "   * The parse filename option =p picks takes four patterns from the filename to include in the output,\n");
+    fprintf(stderr,   "     This is so that it is easy to plot test conditions that are commonly encoded in a filename.\n");
+    fprintf(stderr,   "     Fields are delimited by uderscores. The four patters for CID, process, Voltage and Temperature are:\n");
+    fprintf(stderr,   "       _CID-<componentID>_ , _PROC-<process info>_, _<x>p<y>V\n and _<x>p<y>C\n_ . 'p' is the decimal point.\n");
     fprintf(stderr,   "   * To compute the statistics, djent builds a frequency table of the symbols. This can be displayed\n");
     fprintf(stderr,   "     using the -c option. The size of this table is what limits the the maximum symbol size. For each\n");
     fprintf(stderr,   "     of the 2^n symbols, a 64 bit entry in a table is created. So for n=32, that's 32GBytes so the ability\n");
@@ -225,6 +239,8 @@ void display_usage() {
     fprintf(stderr,   "     djent -t data1.hex data2.hex data3.hex\n\n");
     fprintf(stderr,   "   Analyze ascii symbols - Read in binary and set symbol size to 8.\n");
     fprintf(stderr,   "     djent -b -l 8  textfile.txt\n");
+    fprintf(stderr,   "   Analyze binary file with parsable filename.\n");
+    fprintf(stderr,   "     djent -b -t -p  rawdata_CID-X23_PROC-TTFT_1p2V_25p0C_.bin\n");
 
 }
 
@@ -539,7 +555,7 @@ int fill_byte_queue(FILE *fp) {
     int i;
     int total_len;
     total_len = 0;
-    /* Pull in a loop until there is left than BUFFSIZE space in thequeue */
+    /* Pull in a loop until there is less than BUFFSIZE space in thequeue */
     do {
         space = QUEUESIZE-queue_size; /* Dont pull more data than needed */
         if (space > BUFFSIZE) space = BUFFSIZE;
@@ -927,6 +943,119 @@ void finalize_scc() {
 	return;
 };
 
+void parse_the_filename(char *filename) {
+    int    status;
+    regex_t    rev;
+    regex_t    ret;
+    regex_t    recid;
+    regex_t    reproc;
+
+    char matched[256];
+    int n_matches=10;
+    regmatch_t m[n_matches];
+    int numchars;
+    char vpattern[] = "_[0-9]+p[0-9]+V_\0";
+    char tpattern[] = "_[0-9]+p[0-9]+C_";
+    char cidpattern[] = "_CID-[^_]*_";
+    char procpattern[] = "_PROC-[^_]*_";
+
+    int start;
+    int end;
+    int i;
+
+    status = regcomp(&rev, vpattern, REG_EXTENDED);
+    if (status != 0) {
+        char error_message[MAX_ERROR_MSG];
+        regerror(status, &rev, error_message, MAX_ERROR_MSG);
+        fprintf(stderr,"Regex error compiling '%s': %s\n", vpattern, error_message);
+        exit(1);
+    }
+
+    status = regcomp(&ret, tpattern, REG_EXTENDED);
+    if (status != 0) {
+        char error_message[MAX_ERROR_MSG];
+        regerror(status, &ret, error_message, MAX_ERROR_MSG);
+        fprintf(stderr,"Regex error compiling '%s': %s\n", tpattern, error_message);
+        exit(1);
+    }
+
+    status = regcomp(&recid, cidpattern, REG_EXTENDED);
+    if (status != 0) {
+        char error_message[MAX_ERROR_MSG];
+        regerror(status, &recid, error_message, MAX_ERROR_MSG);
+        fprintf(stderr,"Regex error compiling '%s': %s\n", cidpattern, error_message);
+        exit(1);
+    }
+
+    status = regcomp(&reproc, procpattern, REG_EXTENDED);
+    if (status != 0) {
+        char error_message[MAX_ERROR_MSG];
+        regerror(status, &reproc, error_message, MAX_ERROR_MSG);
+        fprintf(stderr,"Regex error compiling '%s': %s\n", procpattern, error_message);
+        exit(1);
+    }
+
+    
+    status = regexec(&rev, filename, (size_t) 1, m, 0);
+    regfree(&rev);
+    if (status != 0) {
+        fprintf(stderr,"Regex error scanning for _<num>p<num>V_:\n");
+        voltage = 0.0;
+    } else {
+        voltage = 0.0;
+        start = m[0].rm_so;
+        end = m[0].rm_eo;
+        numchars = end - start;
+        strncpy(matched,filename+m[0].rm_so,numchars);
+        for (i=0;i<numchars;i++) {
+            if (matched[i]=='p') matched[i]='.';
+        }
+        sscanf(matched,"_%lfV_",&voltage);
+    }
+    
+    status = regexec(&ret, filename, (size_t) 1, m, 0);
+    regfree(&ret);
+    if (status != 0) {
+        fprintf(stderr,"Regex error scanning for _<num>p<num>C_:\n");
+        temperature = 0.0;
+    } else {
+        temperature = 0.0;
+        start = m[0].rm_so;
+        end = m[0].rm_eo;
+        numchars = end - start;
+        strncpy(matched,filename+m[0].rm_so,numchars);
+        for (i=0;i<numchars;i++) {
+            if (matched[i]=='p') matched[i]='.';
+        }
+        sscanf(matched,"_%lfC_",&temperature);
+    }
+    
+    status = regexec(&recid, filename, (size_t) 1, m, 0);
+    regfree(&recid);
+    if (status != 0) {
+        fprintf(stderr,"Regex error scanning for _ID-<deviceid>_:\n");
+    } else {
+        start = m[0].rm_so;
+        end = m[0].rm_eo;
+        numchars = end - start;
+        strncpy(matched,filename+m[0].rm_so,numchars-1);
+        sscanf(matched,"_CID-%s",(char *)&deviceid);
+    }
+    
+    status = regexec(&reproc, filename, (size_t) 1, m, 0);
+    regfree(&reproc);
+    if (status != 0) {
+        fprintf(stderr,"Regex error scanning for _PROC-<processdetail>_\n");
+    } else {
+        start = m[0].rm_so;
+        end = m[0].rm_eo;
+        numchars = end - start;
+        strncpy(matched,filename+m[0].rm_so,numchars-1);
+        sscanf(matched,"_PROC-%s",(char *)&process);
+    }
+}
+
+
 /********
 * main() is mostly about parsing and qualifying the command line options.
 */
@@ -949,7 +1078,8 @@ int main(int argc, char** argv)
     using_inputlistfile = 0;
     suppress_header = 0;
     byte_reverse = 0;
-    
+    parse_filename = 0;
+ 
 	#define ERRSTRINGSIZE 256
     #ifdef _WIN32
 	errno_t err;
@@ -957,7 +1087,7 @@ int main(int argc, char** argv)
     #endif
     int filenumber = 0;
     
-    char optString[] = "brcwfthusi:n:l:";
+    char optString[] = "bprcwfthusi:n:l:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
@@ -965,6 +1095,7 @@ int main(int argc, char** argv)
     { "byte_reverse", no_argument, NULL, 'r' },
     { "occurrence", no_argument, NULL, 'c' },
     { "fold", no_argument, NULL, 'f' },
+    { "parse_filename", no_argument, NULL, 'p' },
     { "inputlistfile", required_argument, NULL, 'i' },
     { "scc_wrap", no_argument, NULL, 'w' },
     { "lagn", required_argument, NULL, 'n' },
@@ -997,6 +1128,10 @@ int main(int argc, char** argv)
                 print_occurrence = 1;
                 break;
  
+            case 'p':
+                parse_filename = 1;
+                break;
+
             case 'r':
                 byte_reverse = 1;
                 break;
@@ -1057,6 +1192,11 @@ int main(int argc, char** argv)
 	else {
 		use_stdin = 0;
 	}
+
+    if ((parse_filename==1) && (use_stdin==1)) {
+        fprintf(stderr,"Error: Can't parse filename when using stdin for input\n");
+        exit(1);
+    }
 
 	terse_index = 0;
 	/* if (use_stdin == 0) { */
@@ -1126,6 +1266,7 @@ int main(int argc, char** argv)
                 filename = &(filelist[256*filenumber]);
                 /*printf("FILENUMBER = %d , Filename = %s\n",filenumber,filename);*/
             }
+            parse_the_filename(filename);
 
 			if (hexmode == 1) {
 				if (terse == 0) printf(" opening %s as hex text\n", filename);
@@ -1169,8 +1310,12 @@ int main(int argc, char** argv)
 
 		/* Print terse header if necessary */
 		if ((terse == 1) && (terse_index == 1) && (suppress_header==0)) {
-			printf("   0,  File-bytes,    Entropy,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation, Filename\n");
-		}
+            if (parse_filename==1) {
+			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation,    Filename\n");
+            } else {
+			    printf("   0,  File-bytes,    Entropy,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation, Filename\n");
+		    }
+        }
 
 		/* Initialize the metrics */
 		symbol_count = 0;
@@ -1225,14 +1370,24 @@ int main(int argc, char** argv)
 		finalize_scc();
 
 		if (terse == 1) {
-            #ifdef _WIN32
-			printf("%4d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
-            #elif __llvm__
-			printf("%4d,%12lld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
-            #elif __linux__
-			printf("%4d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
-            #endif
-		}
+            if (parse_filename==1) {
+                #ifdef _WIN32
+                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                #elif __llvm__
+                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                #elif __linux__
+                printf("%4d,%12ld,%9s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                #endif
+		    } else {
+                #ifdef _WIN32
+                printf("%4d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                #elif __llvm__
+                printf("%4d,%12lld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                #elif __linux__
+                printf("%4d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                #endif
+            }
+        }
 		else {
 
             /* Output the occurrence count if requested */
