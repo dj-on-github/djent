@@ -56,10 +56,13 @@
 double pochisq(double ax,int df);
 
 unsigned char buffer[BUFFSIZE];
+unsigned char buffer2[BUFFSIZE+4];
 unsigned char queue[QUEUESIZE];
 unsigned int queue_start;     /* FIFO pointers */
 unsigned int queue_end;
 unsigned int queue_size;
+
+unsigned int buffer2_size;
 
 unsigned int current_byte;
 unsigned int bits_used_from_byte;
@@ -90,6 +93,7 @@ int print_occurrence;
 int fold;
 int lagn;
 int byte_reverse;
+int word_reverse;
 int parse_filename;
 
 int use_stdin;
@@ -176,7 +180,7 @@ const unsigned char byte_reverse_table[] = {
 void update_monte_carlo(unsigned char symbol);
 
 void display_usage() {
-	fprintf(stderr, "Usage: djent [-b] [-r] [-l <n>] [-p] [-c] [-u] [-h] [-f] [-t] [-s] [-i <input file list filename>] [filename] [filename2] ...\n");
+	fprintf(stderr, "Usage: djent [-brRpcuhds] [-l <n>] [-i <input file list filename>] [filename] [filename2] ...\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Compute statistics of random data.\n");
 	fprintf(stderr, "  Author: David Johnston, dj@deadhat.com\n");
@@ -188,6 +192,7 @@ void display_usage() {
 	fprintf(stderr, "  -l <n>         --symbol_length=<n>        Treat incoming data symbols as bitlength n. Default is 8.\n");
 	fprintf(stderr, "  -b             --binary                   Treat incoming data as binary. Default bit length will be -l 1\n");
 	fprintf(stderr, "  -r             --byte_reverse             Reverse the bit order in incoming bytes\n");
+	fprintf(stderr, "  -R             --word_reverse             Reverse the byte order in incoming 4 byte words\n");
 	fprintf(stderr, "  -c             --occurrence               Print symbol occurrence counts\n");
 	fprintf(stderr, "  -w             --scc_wrap                 Treat data as cyclical in SCC\n");
 	fprintf(stderr, "  -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1\n");
@@ -224,6 +229,10 @@ void display_usage() {
     fprintf(stderr,   "     computation to compare each Xth symbol with the (X+n)th symbol instead of the (X+1)th symbol.\n");
     fprintf(stderr,   "     If you use wrap around with Lag-N, then the wrap around will reach n bits further into the start\n");
     fprintf(stderr,   "     of the sequence.\n");
+    fprintf(stderr,   "   * The byte reverse option -r reverses the order of bits within each byte. The word reverse option -R\n");    
+    fprintf(stderr,   "     reverses the order of bytes within each 32 bit word, from 3,2,1,0 to 0,1,2,3. Both -R and -r can\n");    
+    fprintf(stderr,   "     be used together. Using -R with a data that isn't a multiple of 32 bits long will get padded with\n");    
+    fprintf(stderr,   "     zeros, which may not be what you want. A padding warning will be sent to STDERR.\n");    
     fprintf(stderr,   "   * Instead of providing data file names on the command line, djent can be told to read a list of files\n");
     fprintf(stderr,   "     from a text file. The file must have one filename per line. Lines beginning with # will be ignored.\n");
     fprintf(stderr,   "     Use the -i <filename> option to request that djent reads the file list from <filename>.\n");
@@ -423,8 +432,7 @@ void init_byte_queue() {
 int ishex(unsigned char c) {
     int result;
     result = 0;
-    if (c == '0') 
-        result = 1;
+    if      (c == '0') result = 1;
     else if (c == '1') result = 1;
     else if (c == '2') result = 1;
     else if (c == '3') result = 1;
@@ -553,7 +561,10 @@ int fill_byte_queue(FILE *fp) {
     int len;
     int space;
     int i;
+    int j;
     int total_len;
+    int buff2_remaining;
+
     total_len = 0;
     /* Pull in a loop until there is less than BUFFSIZE space in thequeue */
     do {
@@ -576,25 +587,94 @@ int fill_byte_queue(FILE *fp) {
                 buffer[i]=tolower(buffer[i]);
             }
         }
-        
-        /*  Transfer buffer to queue */
-        for (i=0;i<len;i++) {
-            if (byte_reverse == 1) {
-                queue[(queue_end+i) % QUEUESIZE] = byte_reverse_table[buffer[i]];
-            } else {
-                queue[(queue_end+i) % QUEUESIZE] = buffer[i];
+
+        /* If we aren't doing word reverse, just move the buffer to the queue */ 
+        if (word_reverse == 0) {
+            /*  Transfer buffer to queue */
+            for (i=0;i<len;i++) {
+                if (byte_reverse == 1) {
+                    queue[(queue_end+i) % QUEUESIZE] = byte_reverse_table[buffer[i]];
+                } else {
+                    queue[(queue_end+i) % QUEUESIZE] = buffer[i];
+                }
+                
+                /* Call the monte carlo update that operated over bytes, not symbols */
+                update_monte_carlo(buffer[i]);
             }
             
-            /* Call the monte carlo update that operated over bytes, not symbols */
-            update_monte_carlo(buffer[i]);
-        }
-        
-        filebytes += len;
-        
-        queue_size += len;
-        queue_end = ((queue_end + len) % QUEUESIZE);
+            filebytes += len;
+            
+            queue_size += len;
+            queue_end = ((queue_end + len) % QUEUESIZE);
 
-        total_len += len;
+            total_len += len;
+        } else {  /* word_reverse == 1  so use the word reverse buffer */
+            
+            /* Transfer buffer to word reverse queue */
+            /*printf(" Transfer buffer to word reverse queue \n");*/
+            for (i=0;i<len;i++) {
+                buffer2[buffer2_size++]=buffer[i];
+            }
+
+            /* Pad out to a 4 byte boundary if we are at the end */
+            /* printf(" Pad out to a 4 byte boundary if we are at the end \n");*/
+            /*if ((buffer2_size % 4 != 0)) {
+                printf(" Padding! \n");
+                for (i=0;i<(4-buffer2_size);i++) {
+                    buffer2[buffer2_size++] = 0x00;
+                }
+                fprintf(stderr,"Warning: Padded %d extra zeroes to make 4 byte boundary for word reverse\n",(4-buffer2_size));
+            }*/
+
+            /* Transfer it back out to the queue in blocks of 4 bytes in reverse */
+            /* printf(" Transfer it back out to the queue in blocks of 4 bytes in reverse\n");*/
+            /*if ((buffer2_size % 4) != 0) {
+                printf("ERROR: buffer2_size = %d\n",buffer2_size);
+                printf("ERROR: buffer size not on 4 byte boundary"); 
+                exit(1);
+            }*/
+            buff2_remaining = buffer2_size;
+            i = 0;
+            do {
+                /* printf( "    i = %d,  buffer2_size = %d \n",i,buffer2_size);*/
+                for (j=0;j<4;j++) {
+                    /* printf( "    j = %d\n",j); */
+                    if (byte_reverse == 1) {
+                        queue[(queue_end+j) % QUEUESIZE] = byte_reverse_table[buffer2[(i*4)+(3-j)]];
+                        update_monte_carlo(byte_reverse_table[buffer2[(i*4)+(3-j)]]);
+                    } else {
+                        queue[(queue_end+j) % QUEUESIZE] = buffer2[(i*4)+(3-j)];
+                        update_monte_carlo(buffer2[(i*4)+j]);
+                    }
+                }
+                buff2_remaining -= 4;
+                buffer2_size -= 4;
+                queue_size += 4;
+                queue_end = (queue_end+4) % QUEUESIZE;
+                total_len += 4;
+                i++;
+            } while (buffer2_size>3);
+
+            /* Pad any leftover */
+            if (buffer2_size != 0) {
+                for (j=0;j<4;j++) {
+                    if (j < buffer2_size) {
+                        queue[(queue_end+j) % QUEUESIZE] = 0x00;
+                        update_monte_carlo(0x00);
+                    } else {
+                        if (byte_reverse == 1) {
+                            queue[(queue_end+j) % QUEUESIZE] = byte_reverse_table[buffer2[(i*4)+(3-j)]];
+                            update_monte_carlo(byte_reverse_table[buffer2[(i*4)+(3-j)]]);
+                        } else {
+                            queue[(queue_end+j) % QUEUESIZE] = buffer2[(i*4)+(3-j)];
+                            update_monte_carlo(buffer2[(i*4)+(3-j)]);
+                        }
+                    }
+                }
+                fprintf(stderr,"Warning: Padded %d extra zeroes to make 4 byte boundary for word reverse\n",buffer2_size);
+            }
+            buffer2_size = 0;
+        }
     } while ((QUEUESIZE-queue_size) > BUFFSIZE);
     return total_len;
 }
@@ -712,6 +792,7 @@ void init_chisq() {
 };
 
 void init_filesize() {
+    /* Nothing to do here */
 };
 
 void init_monte_carlo() {
@@ -954,7 +1035,7 @@ void parse_the_filename(char *filename) {
     int n_matches=10;
     regmatch_t m[n_matches];
     int numchars;
-    char vpattern[] = "_[0-9]+p[0-9]+V_\0";
+    char vpattern[] = "_[0-9]+p[0-9]+V_\0"; /* Regexes for the fields in the filename */
     char tpattern[] = "_[0-9]+p[0-9]+C_";
     char cidpattern[] = "_CID-[^_]*_";
     char procpattern[] = "_PROC-[^_]*_";
@@ -1079,7 +1160,8 @@ int main(int argc, char** argv)
     suppress_header = 0;
     byte_reverse = 0;
     parse_filename = 0;
- 
+    word_reverse = 0; 
+    buffer2_size =0;
 	#define ERRSTRINGSIZE 256
     #ifdef _WIN32
 	errno_t err;
@@ -1087,12 +1169,13 @@ int main(int argc, char** argv)
     #endif
     int filenumber = 0;
     
-    char optString[] = "bprcwfthusi:n:l:";
+    char optString[] = "bprRcwfthusi:n:l:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
     { "binary", no_argument, NULL, 'b' },
     { "byte_reverse", no_argument, NULL, 'r' },
+    { "word_reverse", no_argument, NULL, 'R' },
     { "occurrence", no_argument, NULL, 'c' },
     { "fold", no_argument, NULL, 'f' },
     { "parse_filename", no_argument, NULL, 'p' },
@@ -1134,6 +1217,10 @@ int main(int argc, char** argv)
 
             case 'r':
                 byte_reverse = 1;
+                break;
+
+            case 'R':
+                word_reverse = 1;
                 break;
                             
             case 'w':

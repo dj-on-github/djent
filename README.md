@@ -18,7 +18,7 @@ Planned improvements are:
 
 ```
 djent -h
-Usage: djent [-b] [-r] [-l <n>] [-p] [-c] [-u] [-h] [-f] [-t] [-s] [-i <input file list filename>] [filename] [filename2] ...
+Usage: djent [-brRpcuhds] [-l <n>] [-i <input file list filename>] [filename] [filename2] ...
 
 Compute statistics of random data.
   Author: David Johnston, dj@deadhat.com
@@ -29,6 +29,7 @@ Compute statistics of random data.
   -l <n>         --symbol_length=<n>        Treat incoming data symbols as bitlength n. Default is 8.
   -b             --binary                   Treat incoming data as binary. Default bit length will be -l 1
   -r             --byte_reverse             Reverse the bit order in incoming bytes
+  -R             --word_reverse             Reverse the byte order in incoming 4 byte words
   -c             --occurrence               Print symbol occurrence counts
   -w             --scc_wrap                 Treat data as cyclical in SCC
   -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1
@@ -65,6 +66,10 @@ Compute statistics of random data.
      computation to compare each Xth symbol with the (X+n)th symbol instead of the (X+1)th symbol.
      If you use wrap around with Lag-N, then the wrap around will reach n bits further into the start
      of the sequence.
+   * The byte reverse option -r reverses the order of bits within each byte. The word reverse option -R
+     reverses the order of bytes within each 32 bit word, from 3,2,1,0 to 0,1,2,3. Both -R and -r can
+     be used together. Using -R with a data that isn't a multiple of 32 bits long will get padded with
+     zeros, which may not be what you want. A padding warning will be sent to STDERR.
    * Instead of providing data file names on the command line, djent can be told to read a list of files
      from a text file. The file must have one filename per line. Lines beginning with # will be ignored.
      Use the -i <filename> option to request that djent reads the file list from <filename>.
