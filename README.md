@@ -12,10 +12,6 @@ The improvements are:
 * A list of filenames to analyze can be read from a text file using -i filename.
 * Test condition details (Volts, temp, id etc.) can be parsed from the filename and included in output. 
 
-Planned improvements are:
-
-* Adding a mode to give exactly the same output as ent for compatibilty with tools that parse the ent output.
-
 ```
 djent -h
 Usage: djent [-brRpcuhds] [-l <n>] [-i <input file list filename>] [filename] [filename2] ...
