@@ -35,6 +35,7 @@ Compute statistics of random data.
   -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1
   -f             --fold                     Fold uppercase letters to lower case
   -t             --terse                    Terse output
+  -e             --ent_exact                Exactly match output format of ent
   -s             --suppress_header          Suppress the header in terse output
   -h or -u       --help                     Print this text
 

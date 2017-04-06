@@ -77,6 +77,7 @@ uint64_t symbol_count;
 uint64_t mean_total;
 
 int terse;
+int ent_exact;
 int suppress_header;
 uint64_t filebytes;
 
@@ -198,6 +199,7 @@ void display_usage() {
 	fprintf(stderr, "  -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1\n");
 	fprintf(stderr, "  -f             --fold                     Fold uppercase letters to lower case\n");
 	fprintf(stderr, "  -t             --terse                    Terse output\n");
+	fprintf(stderr, "  -e             --ent_exact                Exactly match output format of ent\n");
 	fprintf(stderr, "  -s             --suppress_header          Suppress the header in terse output\n");
 	fprintf(stderr, "  -h or -u       --help                     Print this text\n");
 
@@ -1406,7 +1408,8 @@ int main(int argc, char** argv)
     byte_reverse = 0;
     parse_filename = 0;
     word_reverse = 0; 
-    buffer2_size =0;
+    buffer2_size = 0;
+    ent_exact = 0;
 	#define ERRSTRINGSIZE 256
     #ifdef _WIN32
 	errno_t err;
@@ -1414,7 +1417,7 @@ int main(int argc, char** argv)
     #endif
     int filenumber = 0;
     
-    char optString[] = "bprRcwfthusi:n:l:";
+    char optString[] = "bprRcwftehusi:n:l:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
@@ -1428,6 +1431,7 @@ int main(int argc, char** argv)
     { "scc_wrap", no_argument, NULL, 'w' },
     { "lagn", required_argument, NULL, 'n' },
     { "terse", no_argument, NULL, 't' },
+    { "ent_exact", no_argument, NULL, 'e' },
     { "suppress_header", no_argument, NULL, 's' },
     { "help", no_argument, NULL, 'h' },
     { NULL, no_argument, NULL, 0 }
@@ -1483,7 +1487,11 @@ int main(int argc, char** argv)
             case 't':
                 terse = 1;
                 break;
-            
+           
+            case 'e':
+                ent_exact = 1;
+                break;
+ 
             case 's':
                 suppress_header = 1;
                 break;
@@ -1601,7 +1609,7 @@ int main(int argc, char** argv)
             if (parse_filename==1) parse_the_filename(filename);
 
 			if (hexmode == 1) {
-				if (terse == 0) printf(" opening %s as hex text\n", filename);
+				if ((terse == 0) && (ent_exact == 0))printf(" opening %s as hex text\n", filename);
                 #ifdef _WIN32
 				if ((err = fopen_s(&fp, filename, "r")) != 0) {
 					strerror_s(errstring, ERRSTRINGSIZE, err);
@@ -1617,7 +1625,7 @@ int main(int argc, char** argv)
                 #endif
 			}
 			else {
-				if (terse == 0) printf(" opening %s as binary\n", filename);
+				if ((terse == 0) && (ent_exact==0)) printf(" opening %s as binary\n", filename);
                 #ifdef _WIN32
 				if ((err = fopen_s(&fp, filename, "rb")) != 0) {
 					strerror_s(errstring, ERRSTRINGSIZE, err);
@@ -1635,14 +1643,21 @@ int main(int argc, char** argv)
 				/* printf("           %x\n",(unsigned int)fp);*/
 			}
 
-			if (terse == 0) printf(" Symbol Size(bits) = %d\n", symbol_length);
+			if ((terse == 0) && (ent_exact == 0))printf(" Symbol Size(bits) = %d\n", symbol_length);
 
 		}
 
 
 		/* Print terse header if necessary */
 		if ((terse == 1) && (terse_index == 1) && (suppress_header==0)) {
-            if (parse_filename==1) {
+            if (ent_exact == 1) {
+                if (symbol_length==1) {
+                    printf("0,File-bits,Entropy,Chi-square,Mean,Monte-Carlo-Pi,Serial-Correlation\n");
+                } else {
+                    printf("0,File-bytes,Entropy,Chi-square,Mean,Monte-Carlo-Pi,Serial-Correlation\n");
+                }
+            }
+            else if (parse_filename==1) {
 			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation,    Filename\n");
             } else {
 			    printf("   0,  File-bytes,    Entropy,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation, Filename\n");
@@ -1702,7 +1717,26 @@ int main(int argc, char** argv)
 		finalize_scc();
 
 		if (terse == 1) {
-            if (parse_filename==1) {
+            if (ent_exact==1) {
+                if (symbol_length == 1) {
+                #ifdef _WIN32
+                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                #elif __llvm__
+                printf("%d,%lld,%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                #elif __linux__
+                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                #endif
+                } else {
+                #ifdef _WIN32
+                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                #elif __llvm__
+                printf("%d,%lld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                #elif __linux__
+                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                #endif
+                }
+            }
+            else if (parse_filename==1) {
                 #ifdef _WIN32
                 printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __llvm__
@@ -1738,24 +1772,51 @@ int main(int argc, char** argv)
             }
 
             /* Output the non terse results */
-            if (parse_filename==1) {
-            printf("   Device ID   : %s\n",deviceid);
-            printf("   Process     : %s\n",process);
-            printf("   Voltage     : %0.2lfV\n",voltage);
-            printf("   Temperature : %0.2lfC\n",temperature);
+            if (ent_exact == 1) {
+                /* Make it look like this:
+                 *
+                 * Entropy = 4.676598 bits per byte.
+                 *
+                 * Optimum compression would reduce the size
+                 * of this 57737 byte file by 41 percent.
+                 * 
+                 * Chi square distribution for 57737 samples is 1499055.27, and randomly
+                 * would exceed this value less than 0.01 percent of the times.
+                 *
+                 * Arithmetic mean value of data bytes is 71.6317 (127.5 = random).
+                 * Monte Carlo value for Pi is 4.000000000 (error 27.32 percent).
+                 * Serial correlation coefficient is 0.515629 (totally uncorrelated = 0.0).
+                 */
+                
+                printf("Entropy = %f bits per byte.\n\n",(result_entropy *(8.0/symbol_length)));
+                printf("Optimum compression would reduce the size\n");
+                printf("of this %d byte file by %d percent\n\n",(int)filebytes,(int)result_compression);
+                printf("Chi square distribution for %d samples is %f, and randomly\n",(int)result_chisq_count,result_chisq_distribution);
+                printf("would exceed this value less than %f percent of the times.\n\n",result_chisq_percent);
+                printf("Arithmetic mean value of data bytes is %f (127.5 = random).\n",result_mean);
+                printf("Monte Carlo value for Pi is %f (error %f percent).\n",result_pi,result_pierr);
+                printf("Serial correlation coefficient is %f (totally uncorrelated = 0.0).\n",result_scc);
             }
-            printf("   Shannon IID Entropy = %f bits per symbol\n",result_entropy);
-		    printf("   Optimal compression would compress by %f percent\n", result_compression);
-            #ifdef _WIN32
-            printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
-            #elif __llvm__
-            printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
-            #elif __linux__
-            printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
-            #endif
-            printf("   Mean = %f\n",result_mean);
-		    printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
-            printf("   Serial Correlation = %f\n",result_scc);
+            else {
+                if (parse_filename==1) {
+                printf("   Device ID   : %s\n",deviceid);
+                printf("   Process     : %s\n",process);
+                printf("   Voltage     : %0.2lfV\n",voltage);
+                printf("   Temperature : %0.2lfC\n",temperature);
+                }
+                printf("   Shannon IID Entropy = %f bits per symbol\n",result_entropy);
+                printf("   Optimal compression would compress by %f percent\n", result_compression);
+                #ifdef _WIN32
+                printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
+                #elif __llvm__
+                printf("   Chi square: symbol count=%llu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
+                #elif __linux__
+                printf("   Chi square: symbol count=%lu, distribution=%1.2f, randomly exceeds %1.2f percent of the time\n", result_chisq_count, result_chisq_distribution, result_chisq_percent);
+                #endif
+                printf("   Mean = %f\n",result_mean);
+                printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
+                printf("   Serial Correlation = %f\n",result_scc);
+            }
 		}
 
         /* Free the per-loop mallocs */		
