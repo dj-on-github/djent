@@ -38,7 +38,7 @@
 
 #ifdef _WIN32
 /* #include "vsdjent/stdafx.h" */
-#include "ya_getopt/ya_getopt.h"
+#include "ya_getopt/ya_getopt.h" /* NOTE: VS2015 goes not have getopt. Put ya_getopt in the directory. From here https://github.com/kubo/ya_getopt */
 #else
 #include <unistd.h> 
 #include <getopt.h>
@@ -60,7 +60,7 @@ unsigned char buffer2[BUFFSIZE+4];
 unsigned char queue[QUEUESIZE];
 unsigned int queue_start;     /* FIFO pointers */
 unsigned int queue_end;
-unsigned int queue_size;
+size_t queue_size;
 
 unsigned int buffer2_size;
 
@@ -343,7 +343,7 @@ double zcdf(double z) {
 #define BIGX        20.0         /* max value to represent exp (x) */
 #define ex(x)       (((x) < -BIGX) ? 0.0 : exp(x))
 
-double chisqp(double ax, int df) {
+double chisqp(double ax, size_t df) {
     double x;
     double a;
     double y;
@@ -492,7 +492,7 @@ void init_hex2bin() {
  * accidentally treating the 0 as part of the data.
  */
  
-int hex2bin(unsigned char *buffer, int len) {
+size_t hex2bin(unsigned char *buffer, size_t len) {
     int outpos = 0;
     int scanpos = 0;
     unsigned char c;
@@ -559,12 +559,12 @@ int hex2bin(unsigned char *buffer, int len) {
     return outpos; /* return the number of bytes converted */
 }
 
-int fill_byte_queue(FILE *fp) {
-    unsigned int len;
-    unsigned int space;
+size_t fill_byte_queue(FILE *fp) {
+    size_t len;
+    size_t space;
     unsigned int i;
     unsigned int j;
-    unsigned int total_len;
+    size_t total_len;
     unsigned int buff2_remaining;
 
     total_len = 0;
@@ -1033,7 +1033,7 @@ void finalize_scc() {
 
 /* look for vpattern in str. Return the match to found. Return True if found */
 int find_vpattern(char *str,char *found) {
-    int len;
+    size_t len;
     int i;
     int start;
     int end;
@@ -1114,7 +1114,7 @@ int find_vpattern(char *str,char *found) {
 
 /* look for tpattern in str. Return the match to found. Return True if found */
 int find_tpattern(char *str,char *found) {
-    int len;
+    size_t len;
     int i;
     int start;
     int end;
@@ -1196,7 +1196,7 @@ int find_tpattern(char *str,char *found) {
 
 /* look for cidpattern in str. Return the match to found. Return True if found */
 int find_cidpattern(char *str,char *found) {
-    int len;
+    size_t len;
     int i;
     int start;
     int end;
@@ -1268,7 +1268,7 @@ int find_cidpattern(char *str,char *found) {
 
 /* look for procpattern in str. Return the match to found. Return True if found */
 int find_procpattern(char *str,char *found) {
-    int len;
+    size_t len;
     int i;
     int start;
     int end;
@@ -1683,7 +1683,7 @@ int main(int argc, char** argv)
 			*/
 		do {
 			if (queue_size == 0) {
-				not_eof = fill_byte_queue(fp); /* get bytes from file into queue */
+				not_eof = (int)fill_byte_queue(fp); /* get bytes from file into queue */
 				if (not_eof == 0) break;
 			}
 			symbol = get_symbol(symbol_length);      /* Pull a symbol from the queue */
@@ -1720,7 +1720,7 @@ int main(int argc, char** argv)
             if (ent_exact==1) {
                 if (symbol_length == 1) {
                 #ifdef _WIN32
-                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                printf("%d,%I64d,%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
                 #elif __llvm__
                 printf("%d,%lld,%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
                 #elif __linux__
@@ -1728,7 +1728,7 @@ int main(int argc, char** argv)
                 #endif
                 } else {
                 #ifdef _WIN32
-                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                printf("%d,%I64d,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
                 #elif __llvm__
                 printf("%d,%lld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
                 #elif __linux__
@@ -1738,7 +1738,7 @@ int main(int argc, char** argv)
             }
             else if (parse_filename==1) {
                 #ifdef _WIN32
-                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __llvm__
                 printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __linux__
@@ -1746,7 +1746,7 @@ int main(int argc, char** argv)
                 #endif
 		    } else {
                 #ifdef _WIN32
-                printf("%4d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12I64d,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __llvm__
                 printf("%4d,%12lld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __linux__
