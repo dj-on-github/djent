@@ -558,12 +558,12 @@ int hex2bin(unsigned char *buffer, int len) {
 }
 
 int fill_byte_queue(FILE *fp) {
-    int len;
-    int space;
-    int i;
-    int j;
-    int total_len;
-    int buff2_remaining;
+    unsigned int len;
+    unsigned int space;
+    unsigned int i;
+    unsigned int j;
+    unsigned int total_len;
+    unsigned int buff2_remaining;
 
     total_len = 0;
     /* Pull in a loop until there is less than BUFFSIZE space in thequeue */
@@ -1024,115 +1024,360 @@ void finalize_scc() {
 	return;
 };
 
-void parse_the_filename(char *filename) {
-    int    status;
-    regex_t    rev;
-    regex_t    ret;
-    regex_t    recid;
-    regex_t    reproc;
+/* Visual Studio C doesnt have a regex library. So this does the
+ * pattern search instead so I can compile on windows, linux and macos.
+ */
 
-    char matched[256];
-    int n_matches=10;
-    regmatch_t m[n_matches];
-    int numchars;
-    char vpattern[] = "_[0-9]+p[0-9]+V_\0"; /* Regexes for the fields in the filename */
-    char tpattern[] = "_[0-9]+p[0-9]+C_";
-    char cidpattern[] = "_CID-[^_]*_";
-    char procpattern[] = "_PROC-[^_]*_";
 
+/* look for vpattern in str. Return the match to found. Return True if found */
+int find_vpattern(char *str,char *found) {
+    int len;
+    int i;
     int start;
     int end;
+    int pos;
+    int state;
+    int done;
+    char c;
+    len = strlen(str);
+    start = 0;
+    end = 0;
+    done = 0;
+
+    /* A little state machine to match the _<int>p<int>V_ pattern */
+    pos = 0;
+    state = 1;
+    done = 0;
+    do {
+        c = str[pos];
+        if (state == 1) { /* _ */
+            if (c=='_') {
+                state++;
+                start=pos;
+            }
+            pos++;
+        } else if (state == 2) { /* first int */
+            if (isdigit((char)c)) {
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 3) { /* rest of int */
+            if (isdigit((char)c)) {
+                state=state;
+            } else if (c=='p') { /* p */
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 4) { /* first int */
+            if (isdigit((char)c)) {
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 5) { /* rest of int */
+            if (isdigit((char)c)) {
+                state=state;
+            } else if (c=='V') { /* V */
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 6) { /* _ */
+            if (c=='_') {
+                done = 1;
+                end = pos;
+            } else {
+                state = 1;
+            }
+            pos++;
+        }
+
+    } while ((pos < len) && (done == 0));
+    
+    if (done == 0) return 0;
+
+    for(i=start;i<=end;i++) {
+        found[i-start]=str[i];
+    }
+    found[i-start] = 0x00;
+    return 1;
+   
+}
+
+/* look for tpattern in str. Return the match to found. Return True if found */
+int find_tpattern(char *str,char *found) {
+    int len;
+    int i;
+    int start;
+    int end;
+    int pos;
+    int state;
+    int done;
+    char c;
+    len = strlen(str);
+    start = 0;
+    end = 0;
+    done = 0;
+
+    /* A little state machine to match the _<int>p<int>C_ pattern */
+    pos = 0;
+    state = 1;
+    done = 0;
+    do {
+        c = str[pos];
+        if (state == 1) { /* _ */
+            if (c=='_') {
+                state++;
+                start=pos;
+            }
+            pos++;
+        } else if (state == 2) { /* first int */
+            if (isdigit((char)c)) {
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 3) { /* rest of int */
+            if (isdigit((char)c)) {
+                state=state;
+            } else if (c=='p') { /* p */
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 4) { /* first int */
+            if (isdigit((char)c)) {
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 5) { /* rest of int */
+            if (isdigit((char)c)) {
+                state=state;
+            } else if (c=='C') { /* C */
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 6) { /* _ */
+            if (c=='_') {
+                done = 1;
+                end = pos;
+            } else {
+                state = 1;
+            }
+            pos++;
+        }
+
+    } while ((pos < len) && (done == 0));
+    
+    if (done == 0) return 0;
+
+    for(i=start;i<=end;i++) {
+        found[i-start]=str[i];
+    }
+    found[i-start] = 0x00;
+    return 1;
+   
+}
+
+
+/* look for cidpattern in str. Return the match to found. Return True if found */
+int find_cidpattern(char *str,char *found) {
+    int len;
+    int i;
+    int start;
+    int end;
+    int pos;
+    int state;
+    int done;
+    char c;
+    len = strlen(str);
+    start = 0;
+    end = 0;
+    done = 0;
+
+    /* A little state machine to match the _<int>p<int>C_ pattern */
+    pos = 0;
+    state = 1;
+    done = 0;
+    do {
+        c = str[pos];
+        if (state == 1) { /* _ */
+            if (c=='_') {
+                state++;
+                start=pos;
+            }
+            pos++;
+        } else if (state == 2) {
+            if (c=='C') state++;
+            else state = 1;
+            pos++;         
+        } else if (state == 3) {
+            if (c=='I') state++;
+            else state = 1;
+            pos++;         
+        } else if (state == 4) {
+            if (c=='D') state++;
+            else state = 1;
+            pos++;         
+        } else if (state == 5) {
+            if (c=='-') state++;
+            else state = 1;
+            pos++;         
+        } else if (state == 6) { /* first char of ID */
+            if (c != '_') {
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 7) { /* rest of ID */
+            if (c != '_') {
+                state=state;
+            } else { /* _ */
+                done = 1;
+                end = pos;
+            } 
+            pos++;
+        }
+
+    } while ((pos < len) && (done == 0));
+    
+    if (done == 0) return 0;
+
+    for(i=start;i<=end;i++) {
+        found[i-start]=str[i];
+    }
+    found[i-start] = 0x00;
+    return 1;
+   
+}
+
+/* look for procpattern in str. Return the match to found. Return True if found */
+int find_procpattern(char *str,char *found) {
+    int len;
+    int i;
+    int start;
+    int end;
+    int pos;
+    int state;
+    int done;
+    char c;
+    len = strlen(str);
+    start = 0;
+    end = 0;
+    done = 0;
+
+    /* A little state machine to match the _PROC-<name>_ pattern */
+    pos = 0;
+    state = 1;
+    done = 0;
+    do {
+        c = str[pos];
+        if (state == 1) { /* _ */
+            if (c=='_') {
+                state++;
+                start=pos;
+            }
+            pos++;
+        } else if (state == 2) {
+            if (c=='P') state++;
+            else state = 1;
+            pos++;         
+        } else if (state == 3) {
+            if (c=='R') state++;
+            else state = 1;
+            pos++;         
+        } else if (state == 4) {
+            if (c=='O') state++;
+            else state = 1;
+            pos++;         
+        } else if (state == 5) {
+            if (c=='C') state++;
+            else state = 1;
+            pos++;         
+        } else if (state == 6) {
+            if (c=='-') state++;
+            else state = 1;
+            pos++;         
+        } else if (state == 7) { /* first char of ID */
+            if (c != '_') {
+                state++;
+            } else {
+                state = 1;
+            }
+            pos++;
+        } else if (state == 8) { /* rest of ID */
+            if (c != '_') {
+                state=state;
+            } else { /* _ */
+                done = 1;
+                end = pos;
+            } 
+            pos++;
+        }
+
+    } while ((pos < len) && (done == 0));
+    
+    if (done == 0) return 0;
+
+    for(i=start;i<=end;i++) {
+        found[i-start]=str[i];
+    }
+    found[i-start] = 0x00;
+    return 1;
+   
+}
+
+void parse_the_filename(char *filename) {
+
+    char match[256];
     int i;
 
-    status = regcomp(&rev, vpattern, REG_EXTENDED);
-    if (status != 0) {
-        char error_message[MAX_ERROR_MSG];
-        regerror(status, &rev, error_message, MAX_ERROR_MSG);
-        fprintf(stderr,"Regex error compiling '%s': %s\n", vpattern, error_message);
-        exit(1);
-    }
-
-    status = regcomp(&ret, tpattern, REG_EXTENDED);
-    if (status != 0) {
-        char error_message[MAX_ERROR_MSG];
-        regerror(status, &ret, error_message, MAX_ERROR_MSG);
-        fprintf(stderr,"Regex error compiling '%s': %s\n", tpattern, error_message);
-        exit(1);
-    }
-
-    status = regcomp(&recid, cidpattern, REG_EXTENDED);
-    if (status != 0) {
-        char error_message[MAX_ERROR_MSG];
-        regerror(status, &recid, error_message, MAX_ERROR_MSG);
-        fprintf(stderr,"Regex error compiling '%s': %s\n", cidpattern, error_message);
-        exit(1);
-    }
-
-    status = regcomp(&reproc, procpattern, REG_EXTENDED);
-    if (status != 0) {
-        char error_message[MAX_ERROR_MSG];
-        regerror(status, &reproc, error_message, MAX_ERROR_MSG);
-        fprintf(stderr,"Regex error compiling '%s': %s\n", procpattern, error_message);
-        exit(1);
-    }
-
-    
-    status = regexec(&rev, filename, (size_t) 1, m, 0);
-    regfree(&rev);
-    if (status != 0) {
+    if (find_vpattern(filename,match)) {
+        for (i=0;i<strlen(match);i++) {
+            if (match[i]=='p') match[i] = '.';
+        }
+        sscanf(match,"_%lfV_",&voltage);
+    } else {
         fprintf(stderr,"Regex error scanning for _<num>p<num>V_:\n");
         voltage = 0.0;
-    } else {
-        voltage = 0.0;
-        start = m[0].rm_so;
-        end = m[0].rm_eo;
-        numchars = end - start;
-        strncpy(matched,filename+m[0].rm_so,numchars);
-        for (i=0;i<numchars;i++) {
-            if (matched[i]=='p') matched[i]='.';
-        }
-        sscanf(matched,"_%lfV_",&voltage);
     }
-    
-    status = regexec(&ret, filename, (size_t) 1, m, 0);
-    regfree(&ret);
-    if (status != 0) {
+
+
+    if (find_tpattern(filename,match)) {
+        for (i=0;i<strlen(match);i++) {
+            if (match[i]=='p') match[i] = '.';
+        }
+        sscanf(match,"_%lfC_",&temperature);
+    } else {
         fprintf(stderr,"Regex error scanning for _<num>p<num>C_:\n");
         temperature = 0.0;
-    } else {
-        temperature = 0.0;
-        start = m[0].rm_so;
-        end = m[0].rm_eo;
-        numchars = end - start;
-        strncpy(matched,filename+m[0].rm_so,numchars);
-        for (i=0;i<numchars;i++) {
-            if (matched[i]=='p') matched[i]='.';
-        }
-        sscanf(matched,"_%lfC_",&temperature);
     }
-    
-    status = regexec(&recid, filename, (size_t) 1, m, 0);
-    regfree(&recid);
-    if (status != 0) {
-        fprintf(stderr,"Regex error scanning for _ID-<deviceid>_:\n");
+
+    if (find_cidpattern(filename,match)) {
+        match[strlen(match)-1]=0x00;
+        sscanf(match,"_CID-%s",(char *)&deviceid);
     } else {
-        start = m[0].rm_so;
-        end = m[0].rm_eo;
-        numchars = end - start;
-        strncpy(matched,filename+m[0].rm_so,numchars-1);
-        sscanf(matched,"_CID-%s",(char *)&deviceid);
+        fprintf(stderr,"Regex error scanning for _CID-<ID>__:\n");
     }
-    
-    status = regexec(&reproc, filename, (size_t) 1, m, 0);
-    regfree(&reproc);
-    if (status != 0) {
-        fprintf(stderr,"Regex error scanning for _PROC-<processdetail>_\n");
+
+    if (find_procpattern(filename,match)) {
+        match[strlen(match)-1]=0x00;
+        sscanf(match,"_PROC-%s",(char *)&process);
     } else {
-        start = m[0].rm_so;
-        end = m[0].rm_eo;
-        numchars = end - start;
-        strncpy(matched,filename+m[0].rm_so,numchars-1);
-        sscanf(matched,"_PROC-%s",(char *)&process);
+        fprintf(stderr,"Regex error scanning for _PROC-<ID>__:\n");
     }
 }
 
@@ -1307,7 +1552,7 @@ int main(int argc, char** argv)
             exit(1);
         }
         
-        filelist = malloc(sizeof(char *)*256*lines);
+        filelist = (char *)malloc(sizeof(char *)*256*lines);
         
         if (filelist==NULL) {
             fprintf(stderr,"Error: Cannot allocate memory for filename list from input file list file %s\n",inputlistfilename);
@@ -1463,7 +1708,7 @@ int main(int argc, char** argv)
                 #elif __llvm__
                 printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __linux__
-                printf("%4d,%12ld,%9s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #endif
 		    } else {
                 #ifdef _WIN32
