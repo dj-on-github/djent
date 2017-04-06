@@ -34,10 +34,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
-#include <regex.h>
+/* #include <regex.h>*/
 
 #ifdef _WIN32
-#include "vsdjent/stdafx.h"
+/* #include "vsdjent/stdafx.h" */
 #include "ya_getopt/ya_getopt.h"
 #else
 #include <unistd.h> 
