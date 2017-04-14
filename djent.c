@@ -1067,7 +1067,7 @@ int find_vpattern(char *str,char *found) {
             pos++;
         } else if (state == 3) { /* rest of int */
             if (isdigit((char)c)) {
-                state=state;
+                ; /* stay here */
             } else if (c=='p') { /* p */
                 state++;
             } else {
@@ -1083,7 +1083,7 @@ int find_vpattern(char *str,char *found) {
             pos++;
         } else if (state == 5) { /* rest of int */
             if (isdigit((char)c)) {
-                state=state;
+                ; /* stay here */
             } else if (c=='V') { /* V */
                 state++;
             } else {
@@ -1148,7 +1148,7 @@ int find_tpattern(char *str,char *found) {
             pos++;
         } else if (state == 3) { /* rest of int */
             if (isdigit((char)c)) {
-                state=state;
+                ; /* Stay here */
             } else if (c=='p') { /* p */
                 state++;
             } else {
@@ -1164,7 +1164,7 @@ int find_tpattern(char *str,char *found) {
             pos++;
         } else if (state == 5) { /* rest of int */
             if (isdigit((char)c)) {
-                state=state;
+                ; /* Stay here */
             } else if (c=='C') { /* C */
                 state++;
             } else {
@@ -1246,7 +1246,7 @@ int find_cidpattern(char *str,char *found) {
             pos++;
         } else if (state == 7) { /* rest of ID */
             if (c != '_') {
-                state=state;
+                ; /* Stay here */
             } else { /* _ */
                 done = 1;
                 end = pos;
@@ -1322,7 +1322,7 @@ int find_procpattern(char *str,char *found) {
             pos++;
         } else if (state == 8) { /* rest of ID */
             if (c != '_') {
-                state=state;
+                ; /* Stay here */
             } else { /* _ */
                 done = 1;
                 end = pos;
