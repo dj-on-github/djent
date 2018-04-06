@@ -112,6 +112,7 @@ double ent;
 uint64_t occurrence_size;
 uint64_t *occurrence_count;
 uint64_t occurrence_total;
+int no_occurrence_space;
 
 double chisq;
 double chisq_sum;
@@ -147,6 +148,10 @@ uint64_t first_symbol;
 uint64_t scc_previous;
 uint64_t scc_count;
 int scc_wrap;
+
+uint64_t aeqb_count;
+uint64_t mean_count;
+double   other_scc;
 
 double    result_mean;
 uint64_t result_chisq_count;
@@ -758,24 +763,28 @@ void init_entropy() {
 void init_occurrences() {
     uint64_t i;
     
+    no_occurrence_space = 0;
+    
     occurrence_total = 0;
     if (symbol_length > 32) {
         fprintf(stderr,"Error, symbol length cannot be longer than 32 bits for occurrence count table\n");
         exit(1);
     }
     occurrence_size = ipow(2,symbol_length);
+    printf("A\n");
+    fflush(stdout);
     occurrence_count = (uint64_t *) malloc (sizeof(uint64_t)*occurrence_size);
     /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurrence_size));
      */
     if (occurrence_count == NULL) {
         #ifdef _WIN32
-        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurrence count\n",(sizeof(uint64_t)*occurrence_size));
+        fprintf(stderr,"Warning, unable to allocate %lld bytes of memory for the occurrence count\n",(sizeof(uint64_t)*occurrence_size));
         #elif __llvm__
-        fprintf(stderr,"Error, unable to allocate %lld bytes of memory for the occurrence count\n",(sizeof(uint64_t)*occurrence_size));
+        fprintf(stderr,"Warning, unable to allocate %lld bytes of memory for the occurrence count\n",(sizeof(uint64_t)*occurrence_size));
         #elif __linux__
-        fprintf(stderr,"Error, unable to allocate %ld bytes of memory for the occurrence count\n",(sizeof(uint64_t)*occurrence_size));
+        fprintf(stderr,"Warning, unable to allocate %ld bytes of memory for the occurrence count\n",(sizeof(uint64_t)*occurrence_size));
         #endif
-        exit(1);
+        no_occurrence_space = 1;
     }
 
     for (i=0;i<occurrence_size;i++) occurrence_count[i] = 0;
@@ -809,6 +818,11 @@ void init_monte_carlo() {
 void init_compression() {
     /* nothing to do here */
 };
+
+void init_otherscc() {
+    aeqb_count = 0;
+    mean_count = 0;
+}
 
 void init_scc() {
     t1 = 0;
@@ -885,9 +899,12 @@ void update_scc(uint64_t symbol) {
             first_symbol = symbol;
         } else {
             t1 += (scc_previous * symbol);
+            if (scc_previous == symbol) aeqb_count += 1; // Other SCC
         }
+        mean_count += symbol; //Other SCC
         t2 += symbol*symbol;
         t3 += symbol;
+        
     
         /* printf("symbol %02X, count=%llu t1= %llX,  t2= %llx, t3= %llx\n",symbol,scc_count,t1,t2,t3); */
         scc_previous = symbol;
@@ -899,9 +916,11 @@ void update_scc(uint64_t symbol) {
             scc_first_lagn[scc_count-1]=symbol;
         } else {
             t1 += (scc_fifo[0] * symbol);
+            if (scc_fifo[0] == symbol) aeqb_count += 1;
             for(i=0;i<lagn;i++) {
                 scc_fifo[i]=scc_fifo[i+1];
             }
+            mean_count += symbol;
             scc_fifo[lagn]=symbol;
             t2 += symbol*symbol;
             t3 += symbol;           
@@ -999,7 +1018,10 @@ void finalize_scc() {
     int64_t top;
     int64_t bottom;
     int i;
-    
+
+    double paeqb;
+    double bias;
+
     if (scc_wrap==1) {
         if (lagn==1) {
             t1 += (scc_previous * first_symbol);
@@ -1021,8 +1043,24 @@ void finalize_scc() {
     bottom = (int64_t)(scc_count * t2) - (int64_t)(t3*t3);
     scc = (double)top/(double)bottom;
 
-
 	result_scc = scc;
+
+    // This computation is to try to use the A=B count
+    // The bias masks the serial correlation
+    // Hence the * 1 - (2*abs(bias-0.5)) part.
+
+    bias = (double)t3/(double)scc_count;
+    paeqb = (double)aeqb_count/(double)scc_count;
+
+    // Conversion assuming no bias.
+    other_scc = ((2*paeqb)-1); 
+    // Adjust using the bias - more bias pulls SCC towards 0.
+    other_scc = other_scc * pow((1.0-(2.0*fabs(bias-0.5))),2);
+
+    // Debugging output for A==B computation.
+    printf("OtherSCC\n     BIAS = %f\n     paeqb = %f\n     other_scc = %f\n",bias,paeqb,other_scc); 
+    printf("     (1.0-(2.0*fabs(bias-0.5))) = %f\n",(1.0-(2.0*fabs(bias-0.5))));
+    printf("     full other scc = %f\n",(((2*paeqb)-1)*  (1.0-(2.0*fabs(bias-0.5)))));
 	return;
 };
 
@@ -1667,6 +1705,8 @@ int main(int argc, char** argv)
 		/* Initialize the metrics */
 		symbol_count = 0;
 
+        printf("\nXXX 1\n");
+        fflush(stdout);
 		init_mean();
 		init_entropy();
 		init_occurrences();
@@ -1695,7 +1735,7 @@ int main(int argc, char** argv)
 			/* Then update the algorithms using the symbol */
 			update_mean(symbol);
 			update_entropy(symbol);
-			update_occurrences(symbol);
+			if (no_occurrence_space == 0) update_occurrences(symbol);
 			update_chisq(symbol);
 			update_filesize(symbol);
 			/* Monte Carlo is different, it works on bytes, not symbols
@@ -1708,7 +1748,7 @@ int main(int argc, char** argv)
 		} while (1 == 1);
 
 		finalize_mean();
-		finalize_occurrences();
+		if (no_occurrence_space == 0) finalize_occurrences();
 		finalize_chisq();
 		finalize_entropy();
 		finalize_filesize();
@@ -1728,36 +1768,36 @@ int main(int argc, char** argv)
                 #endif
                 } else {
                 #ifdef _WIN32
-                printf("%d,%I64d,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                printf("%d,%I64d,%f,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc,other_scc);
                 #elif __llvm__
-                printf("%d,%lld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                printf("%d,%lld,%f,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc,other_scc);
                 #elif __linux__
-                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
+                printf("%d,%ld,%f,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc,other_scc);
                 #endif
                 }
             }
             else if (parse_filename==1) {
                 #ifdef _WIN32
-                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc,other_scc, filename);
                 #elif __llvm__
-                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc,other_scc, filename);
                 #elif __linux__
-                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc,other_scc, filename);
                 #endif
 		    } else {
                 #ifdef _WIN32
-                printf("%4d,%12I64d,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12I64d,%12f,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc,other_scc, filename);
                 #elif __llvm__
-                printf("%4d,%12lld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12lld,%12f,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc,other_scc, filename);
                 #elif __linux__
-                printf("%4d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12ld,%12f,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, other_scc, filename);
                 #endif
             }
         }
 		else {
 
             /* Output the occurrence count if requested */
-            if (print_occurrence==1) {
+            if ((print_occurrence==1) && (no_occurrence_space == 0) ) {
                 double fraction;
                 for (i=0; i<occurrence_size;i++) {
                     fraction = (double)occurrence_count[i]/(double)occurrence_total;
@@ -1816,6 +1856,7 @@ int main(int argc, char** argv)
                 printf("   Mean = %f\n",result_mean);
                 printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
                 printf("   Serial Correlation = %f\n",result_scc);
+                printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
             }
 		}
 
