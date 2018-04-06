@@ -771,7 +771,6 @@ void init_occurrences() {
         exit(1);
     }
     occurrence_size = ipow(2,symbol_length);
-    printf("A\n");
     fflush(stdout);
     occurrence_count = (uint64_t *) malloc (sizeof(uint64_t)*occurrence_size);
     /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurrence_size));
@@ -1058,9 +1057,9 @@ void finalize_scc() {
     other_scc = other_scc * pow((1.0-(2.0*fabs(bias-0.5))),2);
 
     // Debugging output for A==B computation.
-    printf("OtherSCC\n     BIAS = %f\n     paeqb = %f\n     other_scc = %f\n",bias,paeqb,other_scc); 
-    printf("     (1.0-(2.0*fabs(bias-0.5))) = %f\n",(1.0-(2.0*fabs(bias-0.5))));
-    printf("     full other scc = %f\n",(((2*paeqb)-1)*  (1.0-(2.0*fabs(bias-0.5)))));
+    //printf("OtherSCC\n     BIAS = %f\n     paeqb = %f\n     other_scc = %f\n",bias,paeqb,other_scc); 
+    //printf("     (1.0-(2.0*fabs(bias-0.5))) = %f\n",(1.0-(2.0*fabs(bias-0.5))));
+    //printf("     full other scc = %f\n",(((2*paeqb)-1)*  (1.0-(2.0*fabs(bias-0.5)))));
 	return;
 };
 
@@ -1705,7 +1704,6 @@ int main(int argc, char** argv)
 		/* Initialize the metrics */
 		symbol_count = 0;
 
-        printf("\nXXX 1\n");
         fflush(stdout);
 		init_mean();
 		init_entropy();
