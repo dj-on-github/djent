@@ -153,6 +153,8 @@ uint64_t result_chisq_count;
 double   result_chisq_distribution;
 double   result_chisq_percent;
 double  result_entropy;
+double  result_min_entropy;
+unsigned int result_min_entropy_symbol;
 double  result_pi;
 double  result_pierr;
 double  result_compression;
@@ -926,7 +928,8 @@ void finalize_mean() {
 
 void finalize_entropy() {
 	unsigned int eloop;
-	ent = 0.0;
+	
+    ent = 0.0;
 	for (eloop = 0; eloop < occurrence_size; eloop++) {
 		if (chisq_prob[eloop] > 0.0) {
 			ent += (chisq_prob[eloop] * log10(1.0 / chisq_prob[eloop]) *  3.32192809488736234787);
@@ -941,6 +944,35 @@ void finalize_entropy() {
 };
 
 void finalize_occurrences() {
+    unsigned int i;
+    unsigned int maxc;
+    unsigned int maxsymbol;
+    double maxp;
+    double maxp_ent;
+
+    /* Find the most frequent symbol */
+    maxc=0;
+    maxsymbol=0;
+    for (i=0;i<occurrence_size;i++) {
+        if (occurrence_count[i] > maxc) {
+            maxc = occurrence_count[i];
+            maxsymbol = i;
+        }
+    }
+
+    //printf("maxc: %f\n",(double)maxc);
+    //printf("occurance_size: %f\n",(double)occurrence_size);
+    //printf("occurance_total: %f\n",(double)occurrence_total);
+    maxp = ((double)maxc)/((double)occurrence_total);
+    //printf("maxp: %f\n",maxp);
+    maxp_ent = (-log10(maxp)/log10(2))/symbol_length;
+    //printf("maxp_ent: %f\n",maxp_ent);
+    result_min_entropy = maxp_ent;
+    result_min_entropy_symbol = maxsymbol;
+
+	if (terse != 1) {
+        printf("   Min Entropy (by max occurrence of symbol %x) = %f\n", maxsymbol, maxp_ent);
+    }
 };
 
 void finalize_chisq() {
@@ -1015,7 +1047,7 @@ void finalize_scc() {
     } else {
         scc_count -= lagn;
     }
-    
+
     /* need signed arithmetic because we are subtracting */
     top = (int64_t)(scc_count * t1) - (int64_t)(t3*t3);
     bottom = (int64_t)(scc_count * t2) - (int64_t)(t3*t3);
@@ -1646,8 +1678,10 @@ int main(int argc, char** argv)
 			if ((terse == 0) && (ent_exact == 0))printf(" Symbol Size(bits) = %d\n", symbol_length);
 
 		}
-
-
+/*
+   0,  File-bytes,    Entropy, Min_entropy, MinEntropy-Symbol,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation, Filename
+   1,      210109,    7.942742,    2.349834,55,    0.000000,  127.497723,    3.240505,       0.002354,           pt1a.bin
+*/
 		/* Print terse header if necessary */
 		if ((terse == 1) && (terse_index == 1) && (suppress_header==0)) {
             if (ent_exact == 1) {
@@ -1658,9 +1692,9 @@ int main(int argc, char** argv)
                 }
             }
             else if (parse_filename==1) {
-			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation,    Filename\n");
+			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy, MinEntropy, MinEntropy-Symbol  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation,    Filename\n");
             } else {
-			    printf("   0,  File-bytes,    Entropy,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation, Filename\n");
+			    printf("   0,  File-bytes,    Entropy,     Min_entropy, MinEntropy-Symbol,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation, Filename\n");
 		    }
         }
 
@@ -1738,19 +1772,19 @@ int main(int argc, char** argv)
             }
             else if (parse_filename==1) {
                 #ifdef _WIN32
-                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __llvm__
-                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __linux__
-                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f,    %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #endif
 		    } else {
                 #ifdef _WIN32
-                printf("%4d,%12I64d,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12I64d,%12f,%12f,%21x,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __llvm__
-                printf("%4d,%12lld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12lld,%12f,%12f,%21x,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __linux__
-                printf("%4d,%12ld,%12f,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12ld,%12f,%12f,%21x,%12f,%12f,%12f,   %12f,           %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol,result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #endif
             }
         }
