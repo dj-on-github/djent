@@ -1800,11 +1800,11 @@ int main(int argc, char** argv)
                 #endif
                 } else {
                 #ifdef _WIN32
-                printf("%d,%I64d,%f,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc,other_scc);
+                printf("%d,%I64d,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
                 #elif __llvm__
-                printf("%d,%lld,%f,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc,other_scc);
+                printf("%d,%lld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
                 #elif __linux__
-                printf("%d,%ld,%f,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc,other_scc);
+                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
                 #endif
                 }
             }
@@ -1888,7 +1888,7 @@ int main(int argc, char** argv)
                 printf("   Mean = %f\n",result_mean);
                 printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
                 printf("   Serial Correlation = %f\n",result_scc);
-                printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
+                //printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
             }
 		}
 
