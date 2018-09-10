@@ -1209,7 +1209,7 @@ int find_tpattern(char *str,char *found) {
             }
             pos++;
         } else if (state == 2) { /* first int */
-            if (isdigit((char)c)) {
+            if (isdigit((char)c) || ((char)c == '-')) {
                 state++;
             } else {
                 state = 1;
@@ -1822,7 +1822,7 @@ int main(int argc, char** argv)
                 #elif __llvm__
                 printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #elif __linux__
-                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12lu,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
                 #endif
             }
         }
