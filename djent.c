@@ -1486,6 +1486,8 @@ int main(int argc, char** argv)
     #endif
     int filenumber = 0;
     
+    int got_symbol_length=0;
+    
     char optString[] = "bprRcwftehusi:n:l:";
     int longIndex;
     static const struct option longOpts[] = {
@@ -1510,7 +1512,9 @@ int main(int argc, char** argv)
     while( opt != -1 ) {
         switch( opt ) {
             case 'b':
-                symbol_length = 1; /* binary mode treats newlines as data */
+                if (got_symbol_length == 0) {
+                    symbol_length = 1; /* binary mode treats newlines as data */
+                }
                 hexmode = 0;
                 break;
                 
@@ -1519,6 +1523,8 @@ int main(int argc, char** argv)
                                                * will be <n> and newlines will be treated
                                                * as data.
                                                */
+                got_symbol_length = 1;
+                
                 break;
             case 'i':
                 strncpy(inputlistfilename,optarg,255);
