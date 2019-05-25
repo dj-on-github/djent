@@ -1528,6 +1528,7 @@ int main(int argc, char** argv)
     symbol_length = 8;
     hexmode = 1;
     print_occurrence = 0;
+    print_longest = 0;
     fold = 0;
     terse = 0;
     use_stdin = 1;
@@ -1551,7 +1552,7 @@ int main(int argc, char** argv)
     
     int got_symbol_length=0;
     
-    char optString[] = "bprRcwftehusi:n:l:";
+    char optString[] = "bprRcCwftehusi:n:l:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
@@ -1596,6 +1597,10 @@ int main(int argc, char** argv)
  
             case 'c':
                 print_occurrence = 1;
+                break;
+            
+            case 'C':
+                print_longest = 1;
                 break;
  
             case 'p':
@@ -1910,6 +1915,19 @@ int main(int argc, char** argv)
                     printf("   Value %4d , frequency=%llu , fraction=%f\n", i, occurrence_count[i], fraction);
                     #elif __linux__
                     printf("   Value %4d , frequency=%lu , fraction=%f\n", i, occurrence_count[i], fraction);
+                    #endif
+                }
+            }
+            
+            /* Output the occurrence count if requested */
+            if ((print_longest==1) && (no_longest_space == 0) ) {
+                for (i=0; i<occurrence_size;i++) {
+                    #ifdef _WIN32
+                    printf("   Symbol %x , Longest Run=%lu\n", i, longest_count[i]);
+                    #elif __llvm__
+                    printf("   Symbol %x , Longest Run=%lu\n", i, longest_count[i]);
+                    #elif __linux__
+                    printf("   Symbol %x , Longest Run=%lu\n", i, longest_count[i]);
                     #endif
                 }
             }
