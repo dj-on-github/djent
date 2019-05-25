@@ -35,7 +35,10 @@
 #include <string.h>
 #include <ctype.h>
 /* #include <regex.h>*/
+
+#ifndef NO_GMP
 #include <mpfr.h>
+#endif
 
 #ifdef _WIN32
 /* #include "vsdjent/stdafx.h" */
@@ -176,6 +179,7 @@ double  result_pi;
 double  result_pierr;
 double  result_compression;
 double  result_scc;
+double  result_longest_pvalue;
 
 const unsigned char byte_reverse_table[] = {
   0x00,0x80,0x40,0xC0,0x20,0xA0,0x60,0xE0,0x10,0x90,0x50,0xD0,0x30,0xB0,0x70,0xF0, 
@@ -272,6 +276,85 @@ void display_usage() {
     fprintf(stderr,   "     djent -b -l 8  textfile.txt\n\n");
     fprintf(stderr,   "   Analyze binary file with parsable filename.\n");
     fprintf(stderr,   "     djent -b -t -p  rawdata_CID-X23_PROC-TTFT_1p2V_25p0C_.bin\n");
+
+}
+
+
+// Return the probability of the longest run of heads being less than or equal to n
+// in a sequence of r uniform coin tosses. Use MPFR to avoid overflows.
+double longest_run_cdf(unsigned int ui_n,unsigned int ui_r) { // n=longest run. r = length of data sequence
+    double answer;
+    mpfr_set_default_prec(1024);
+	mpfr_t n;
+	mpfr_t r;
+    mpfr_t topa;
+    mpfr_t bottoma;
+    mpfr_t first;
+    mpfr_t topb;
+    mpfr_t nplusone;
+    mpfr_t bottomb;
+    mpfr_t nplus2over2;
+    mpfr_t second;
+    mpfr_t mpfans;
+    mpfr_set_default_prec(1024);
+
+    mpfr_init(topa);
+    mpfr_init(nplusone);
+    mpfr_init(bottoma);
+    mpfr_init(first);
+    mpfr_init(topb);
+    mpfr_init(bottomb);
+    mpfr_init(nplus2over2);
+    mpfr_init(second);
+    mpfr_init(mpfans);
+    mpfr_init_set_ui(n,ui_n,MPFR_RNDN);
+    mpfr_init_set_ui(r,ui_r,MPFR_RNDN);
+
+    mpfr_add_ui(topa,r,1,MPFR_RNDN);
+
+    mpfr_add_ui(nplusone,n,1,MPFR_RNDN);
+
+
+    mpfr_exp2(bottoma,nplusone,MPFR_RNDN);
+    mpfr_sub(bottoma,bottoma,n,MPFR_RNDN);
+    mpfr_sub_ui(bottoma,bottoma,2,MPFR_RNDN);
+
+    mpfr_div(first,topa,bottoma,MPFR_RNDN);
+    mpfr_neg(first,first,MPFR_RNDN);
+
+    mpfr_exp(first,first,MPFR_RNDN);
+
+    // Second
+    mpfr_exp2(topb,nplusone,MPFR_RNDN);
+    mpfr_sub_ui(topb,topb,1,MPFR_RNDN);
+
+    mpfr_exp2(bottomb,nplusone,MPFR_RNDN);
+
+    mpfr_add_ui(nplus2over2,n,2,MPFR_RNDN);
+    mpfr_div_ui(nplus2over2,nplus2over2,2,MPFR_RNDN);
+
+    mpfr_sub(bottomb,bottomb,nplus2over2,MPFR_RNDN);
+
+    mpfr_div(second,topb,bottomb,MPFR_RNDN);
+
+    //Final
+    mpfr_mul(mpfans,first,second,MPFR_RNDN);
+    answer = mpfr_get_d(mpfans,MPFR_RNDN);
+
+    mpfr_clear(topa);
+    mpfr_clear(nplusone);
+    mpfr_clear(bottoma);
+    mpfr_clear(first);
+    mpfr_clear(topb);
+    mpfr_clear(bottomb);
+    mpfr_clear(nplus2over2);
+    mpfr_clear(second);
+    mpfr_clear(mpfans);
+    mpfr_clear(n);
+    mpfr_clear(r);
+
+    return answer;
+
 
 }
 
@@ -1056,6 +1139,10 @@ void finalize_occurrences() {
     }
 };
 
+void finalize_longest() {
+    result_longest_pvalue = longest_run_cdf((unsigned int)longest_longest, (unsigned int)symbol_count); 
+}
+
 void finalize_chisq() {
     uint64_t i;
     double diff;
@@ -1803,9 +1890,9 @@ int main(int argc, char** argv)
                 }
             }
             else if (parse_filename==1) {
-			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Filename, Longest-Run-Symbol, Longest-Run-Length\n");
+			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Filename, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue\n");
             } else {
-			    printf("   0,  File-bytes,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Filename, Longest-Run-Symbol, Longest-Run-Length\n");
+			    printf("   0,  File-bytes,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Filename, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue\n");
 		    }
         }
 
@@ -1857,6 +1944,7 @@ int main(int argc, char** argv)
 
 		finalize_mean();
 		if (no_occurrence_space == 0) finalize_occurrences();
+        if (no_longest_space == 0) finalize_longest();
 		finalize_chisq();
 		finalize_entropy();
 		finalize_filesize();
@@ -1884,21 +1972,38 @@ int main(int argc, char** argv)
                 #endif
                 }
             }
-            else if (parse_filename==1) {
+            else if ((parse_filename==1) && (symbol_length==1)) {
                 #ifdef _WIN32
-                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, %f\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
                 #elif __llvm__
-                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18x,%12f,%12f,%15f,   %16f, %s, %lx, %lu\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, %f\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
                 #elif __linux__
-                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu \n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, %f\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
                 #endif
-		    } else {
+		    } else if ((parse_filename==0) && (symbol_length==1)) {
                 #ifdef _WIN32
-                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, %f\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
                 #elif __llvm__
-                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, %f\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
                 #elif __linux__
-                printf("%4d,%12lu,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                printf("%4d,%12lu,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, %f\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
+                #endif
+            }
+            else if ((parse_filename==1) && (symbol_length!=1)) {
+                #ifdef _WIN32
+                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, (null)\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                #elif __llvm__
+                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, (null)\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                #elif __linux__
+                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, (null)\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                #endif
+		    } else if ((parse_filename==0) && (symbol_length!=1)) {
+                #ifdef _WIN32
+                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, (null)\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                #elif __llvm__
+                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, (null)\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+                #elif __linux__
+                printf("%4d,%12lu,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, (null)\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
                 #endif
             }
         }
@@ -1978,6 +2083,7 @@ int main(int argc, char** argv)
                 printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
                 printf("   Serial Correlation = %f\n",result_scc);
                 printf("   Longest Run Symbol = %lx. Run Length = %lu\n",longest_longest_symbol,longest_longest);
+                if (symbol_length == 1) printf("   Probabilty of longest run being =< %lu = %f\n",longest_longest,result_longest_pvalue);
                 //printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
             }
 		}
