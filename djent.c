@@ -35,6 +35,7 @@
 #include <string.h>
 #include <ctype.h>
 /* #include <regex.h>*/
+#include <mpfr.h>
 
 #ifdef _WIN32
 /* #include "vsdjent/stdafx.h" */
@@ -91,6 +92,7 @@ int opt;
 unsigned int symbol_length;
 int hexmode;
 int print_occurrence;
+int print_longest;
 int fold;
 int lagn;
 int byte_reverse;
@@ -113,6 +115,16 @@ uint64_t occurrence_size;
 uint64_t *occurrence_count;
 uint64_t occurrence_total;
 int no_occurrence_space;
+
+uint64_t longest_size;
+uint64_t *longest_count;
+uint64_t longest_total;
+int no_longest_space;
+
+uint64_t longest_last_symbol;
+uint64_t longest_run;
+uint64_t longest_longest;
+uint64_t longest_longest_symbol;
 
 double chisq;
 double chisq_sum;
@@ -202,6 +214,7 @@ void display_usage() {
 	fprintf(stderr, "  -r             --byte_reverse             Reverse the bit order in incoming bytes\n");
 	fprintf(stderr, "  -R             --word_reverse             Reverse the byte order in incoming 4 byte words\n");
 	fprintf(stderr, "  -c             --occurrence               Print symbol occurrence counts\n");
+	fprintf(stderr, "  -C             --longest                  Print symbol longest run counts\n");
 	fprintf(stderr, "  -w             --scc_wrap                 Treat data as cyclical in SCC\n");
 	fprintf(stderr, "  -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1\n");
 	fprintf(stderr, "  -f             --fold                     Fold uppercase letters to lower case\n");
@@ -791,6 +804,40 @@ void init_occurrences() {
     for (i=0;i<occurrence_size;i++) occurrence_count[i] = 0;
 };
 
+void init_longest() {
+    uint64_t i;
+    
+    no_longest_space = 0;
+    
+    longest_total = 0;
+    if (symbol_length > 32) {
+        fprintf(stderr,"Error, symbol length cannot be longer than 32 bits for longest count table\n");
+        exit(1);
+    }
+    longest_size = ipow(2,symbol_length);
+    fflush(stdout);
+    longest_count = (uint64_t *) malloc (sizeof(uint64_t)*occurrence_size);
+    /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurrence_size));
+     */
+    if (longest_count == NULL) {
+        #ifdef _WIN32
+        fprintf(stderr,"Warning, unable to allocate %lld bytes of memory for the longest run table\n",(sizeof(uint64_t)*longest_size));
+        #elif __llvm__
+        fprintf(stderr,"Warning, unable to allocate %lld bytes of memory for the longest run table\n",(sizeof(uint64_t)*longest_size));
+        #elif __linux__
+        fprintf(stderr,"Warning, unable to allocate %ld bytes of memory for the longest run table\n",(sizeof(uint64_t)*longest_size));
+        #endif
+        no_longest_space = 1;
+    }
+
+    for (i=0;i<longest_size;i++) longest_count[i] = 0;
+
+    longest_last_symbol=0;
+    longest_run=0;
+    longest_longest=0;
+    longest_longest_symbol=0;
+};
+
 void init_chisq() {
     int i;
     chisq = 0.0;
@@ -856,6 +903,22 @@ void update_occurrences(uint64_t symbol) {
     occurrence_count[symbol]++;
     occurrence_total++;
 };
+
+void update_longest(uint64_t symbol) {
+    if (symbol == longest_last_symbol) {
+        longest_run++;
+        if (longest_run > longest_count[symbol]) {
+            longest_count[symbol] = longest_run;
+        }
+        if (longest_run > longest_longest) {
+            longest_longest = longest_run;
+            longest_longest_symbol = symbol;
+        }
+    } else {
+        longest_run=1;
+        longest_last_symbol=symbol;
+    }
+}
 
 void update_chisq(uint64_t symbol) {
 	/* Nothing to do here */
@@ -1735,9 +1798,9 @@ int main(int argc, char** argv)
                 }
             }
             else if (parse_filename==1) {
-			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Filename\n");
+			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Filename, Longest-Run-Symbol, Longest-Run-Length\n");
             } else {
-			    printf("   0,  File-bytes,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Filename\n");
+			    printf("   0,  File-bytes,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Filename, Longest-Run-Symbol, Longest-Run-Length\n");
 		    }
         }
 
@@ -1748,6 +1811,7 @@ int main(int argc, char** argv)
 		init_mean();
 		init_entropy();
 		init_occurrences();
+		init_longest();
 		init_chisq();
 		init_filesize();
 		init_monte_carlo();
@@ -1774,6 +1838,7 @@ int main(int argc, char** argv)
 			update_mean(symbol);
 			update_entropy(symbol);
 			if (no_occurrence_space == 0) update_occurrences(symbol);
+			if (no_longest_space == 0) update_longest(symbol);
 			update_chisq(symbol);
 			update_filesize(symbol);
 			/* Monte Carlo is different, it works on bytes, not symbols
@@ -1816,19 +1881,19 @@ int main(int argc, char** argv)
             }
             else if (parse_filename==1) {
                 #ifdef _WIN32
-                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
                 #elif __llvm__
-                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18x,%12f,%12f,%15f,   %16f, %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18x,%12f,%12f,%15f,   %16f, %s, %lx, %lu\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
                 #elif __linux__
-                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu \n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
                 #endif
 		    } else {
                 #ifdef _WIN32
-                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
                 #elif __llvm__
-                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
                 #elif __linux__
-                printf("%4d,%12lu,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename);
+                printf("%4d,%12lu,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
                 #endif
             }
         }
@@ -1894,6 +1959,7 @@ int main(int argc, char** argv)
                 printf("   Mean = %f\n",result_mean);
                 printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
                 printf("   Serial Correlation = %f\n",result_scc);
+                printf("   Longest Run Symbol = %lx. Run Length = %lu\n",longest_longest_symbol,longest_longest);
                 //printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
             }
 		}
