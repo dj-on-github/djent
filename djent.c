@@ -25,7 +25,9 @@
 
 /* 0 for no messages. */
 #define DEBUG 10
- 
+
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h> 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -174,7 +176,7 @@ double   result_chisq_distribution;
 double   result_chisq_percent;
 double  result_entropy;
 double  result_min_entropy;
-unsigned int result_min_entropy_symbol;
+uint32_t result_min_entropy_symbol;
 double  result_pi;
 double  result_pierr;
 double  result_compression;
@@ -1955,56 +1957,23 @@ int main(int argc, char** argv)
 		if (terse == 1) {
             if (ent_exact==1) {
                 if (symbol_length == 1) {
-                #ifdef _WIN32
-                printf("%d,%I64d,%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
-                #elif __llvm__
-                printf("%d,%lld,%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
-                #elif __linux__
-                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
-                #endif
+                printf("%d,%"PRIu64",%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
                 } else {
-                #ifdef _WIN32
-                printf("%d,%I64d,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
-                #elif __llvm__
-                printf("%d,%lld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
-                #elif __linux__
-                printf("%d,%ld,%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
-                #endif
+                printf("%d,%"PRIu64",%f,%f,%f,%f,%f\n",terse_index,filebytes,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
                 }
             }
             else if ((parse_filename==1) && (symbol_length==1)) {
-                #ifdef _WIN32
-                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, %f\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
-                #elif __llvm__
-                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, %f\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
-                #elif __linux__
-                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, %f\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
-                #endif
+                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%"PRIu32",%12f,%12f,%15f,   %16f, %s, %"PRIx64", %"PRIu64", %f\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
+
 		    } else if ((parse_filename==0) && (symbol_length==1)) {
-                #ifdef _WIN32
-                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, %f\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
-                #elif __llvm__
-                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, %f\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
-                #elif __linux__
-                printf("%4d,%12lu,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, %f\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
-                #endif
+                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %s, %"PRIx64", %"PRIu64", %f\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest,result_longest_pvalue);
             }
+
             else if ((parse_filename==1) && (symbol_length!=1)) {
-                #ifdef _WIN32
-                printf("%4d,%12I64d,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, (null)\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
-                #elif __llvm__
-                printf("%4d,%12lld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, (null)\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
-                #elif __linux__
-                printf("%4d,%12ld,%8s,%8s,%8.2f,%8.2f,%12f,%12f,%x,%12f,%12f,%15f,   %16f, %s, %lx, %lu, (null)\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
-                #endif
-		    } else if ((parse_filename==0) && (symbol_length!=1)) {
-                #ifdef _WIN32
-                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, (null)\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
-                #elif __llvm__
-                printf("%4d,%12lld,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, (null)\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
-                #elif __linux__
-                printf("%4d,%12lu,%11f, %12f,%18x,%12f,%12f,%15f,       %12f, %s, %lx, %lu, (null)\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
-                #endif
+                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIx32",%12f,%12f,%15f,   %16f, %s, %"PRIx64", %"PRIu64", (null)\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
+		    
+            } else if ((parse_filename==0) && (symbol_length!=1)) {
+                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %s, %"PRIx64", %"PRIu64", (null)\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, filename, longest_longest_symbol,longest_longest);
             }
         }
 		else {
@@ -2028,11 +1997,11 @@ int main(int argc, char** argv)
             if ((print_longest==1) && (no_longest_space == 0) ) {
                 for (i=0; i<occurrence_size;i++) {
                     #ifdef _WIN32
-                    printf("   Symbol %x , Longest Run=%lu\n", i, longest_count[i]);
+                    printf("   Symbol %x , Longest Run=%"PRIu64"\n", i, longest_count[i]);
                     #elif __llvm__
-                    printf("   Symbol %x , Longest Run=%lu\n", i, longest_count[i]);
+                    printf("   Symbol %x , Longest Run=%"PRIu64"\n", i, longest_count[i]);
                     #elif __linux__
-                    printf("   Symbol %x , Longest Run=%lu\n", i, longest_count[i]);
+                    printf("   Symbol %x , Longest Run=%"PRIu64"\n", i, longest_count[i]);
                     #endif
                 }
             }
@@ -2082,8 +2051,8 @@ int main(int argc, char** argv)
                 printf("   Mean = %f\n",result_mean);
                 printf("   Monte Carlo value for Pi is %f (error %1.2f percent).\n", result_pi, result_pierr);
                 printf("   Serial Correlation = %f\n",result_scc);
-                printf("   Longest Run Symbol = %lx. Run Length = %lu\n",longest_longest_symbol,longest_longest);
-                if (symbol_length == 1) printf("   Probabilty of longest run being =< %lu = %f\n",longest_longest,result_longest_pvalue);
+                printf("   Longest Run Symbol = %"PRIx64". Run Length = %"PRIu64"\n",longest_longest_symbol,longest_longest);
+                if (symbol_length == 1) printf("   Probabilty of longest run being <= %"PRIu64" = %f\n",longest_longest,result_longest_pvalue);
                 //printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
             }
 		}

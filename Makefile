@@ -1,7 +1,7 @@
 CC = gcc
-CFLAGS = -I/usr/local/include -m64 -g -Wall -lgmp -lmpfr
+CFLAGS = -I/usr/local/include -m64 -g -Wall
 LDFLAGS = -L/usr/local/lib 
-LDLIBS = -lm
+LDLIBS = -lm -lgmp -lmpfr
 
 djent: djent.o 
 	$(CC) $(CFLAGS) $(LDFLAGS) djent.o -o djent $(LDLIBS)
