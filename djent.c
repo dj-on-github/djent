@@ -1983,26 +1983,14 @@ int main(int argc, char** argv)
                 double fraction;
                 for (i=0; i<occurrence_size;i++) {
                     fraction = (double)occurrence_count[i]/(double)occurrence_total;
-                    #ifdef _WIN32
-                    printf("   Value %4d , frequency=%llu , fraction=%f\n", i, occurrence_count[i], fraction);
-                    #elif __llvm__
-                    printf("   Value %4d , frequency=%llu , fraction=%f\n", i, occurrence_count[i], fraction);
-                    #elif __linux__
-                    printf("   Value %4d , frequency=%lu , fraction=%f\n", i, occurrence_count[i], fraction);
-                    #endif
+                    printf("   Value %4d , frequency=%"PRIu64" , fraction=%f\n", i, occurrence_count[i], fraction);
                 }
             }
             
             /* Output the occurrence count if requested */
             if ((print_longest==1) && (no_longest_space == 0) ) {
                 for (i=0; i<occurrence_size;i++) {
-                    #ifdef _WIN32
                     printf("   Symbol %x , Longest Run=%"PRIu64"\n", i, longest_count[i]);
-                    #elif __llvm__
-                    printf("   Symbol %x , Longest Run=%"PRIu64"\n", i, longest_count[i]);
-                    #elif __linux__
-                    printf("   Symbol %x , Longest Run=%"PRIu64"\n", i, longest_count[i]);
-                    #endif
                 }
             }
 
