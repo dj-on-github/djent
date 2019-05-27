@@ -122,6 +122,9 @@ uint64_t occurrence_total;
 int no_occurrence_space;
 
 uint64_t longest_size;
+uint64_t longest_position;
+uint64_t longest_new_pos;
+uint64_t longest_byte_pos;
 uint64_t *longest_count;
 uint64_t longest_total;
 int no_longest_space;
@@ -895,6 +898,7 @@ void init_longest() {
     no_longest_space = 0;
     
     longest_total = 0;
+    longest_position = 0;
     if (symbol_length > 32) {
         fprintf(stderr,"Error, symbol length cannot be longer than 32 bits for longest count table\n");
         exit(1);
@@ -998,10 +1002,12 @@ void update_longest(uint64_t symbol) {
         if (longest_run > longest_longest) {
             longest_longest = longest_run;
             longest_longest_symbol = symbol;
+            longest_position = longest_new_pos;
         }
     } else {
         longest_run=1;
         longest_last_symbol=symbol;
+        longest_new_pos = occurrence_total;
     }
 }
 
@@ -1143,6 +1149,13 @@ void finalize_occurrences() {
 
 void finalize_longest() {
     result_longest_pvalue = longest_run_cdf((unsigned int)longest_longest, (unsigned int)symbol_count); 
+    
+    if (symbol_length != 8) {
+        longest_byte_pos = (occurrence_total*symbol_length)/8;
+    } else {
+        longest_byte_pos = occurrence_total;
+    }
+     
 }
 
 void finalize_chisq() {
@@ -2042,6 +2055,7 @@ int main(int argc, char** argv)
                 printf("   Longest Run Symbol = %"PRIx64". Run Length = %"PRIu64"\n",longest_longest_symbol,longest_longest);
                 if (symbol_length == 1) printf("   Probabilty of longest run being <= %"PRIu64" = %f\n",longest_longest,result_longest_pvalue);
                 //printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
+                printf("   Position of Longest Run = %"PRIu64".\n",longest_byte_pos);
             }
 		}
 
