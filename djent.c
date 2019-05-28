@@ -209,7 +209,7 @@ const unsigned char byte_reverse_table[] = {
 void update_monte_carlo(unsigned char symbol);
 
 void display_usage() {
-	fprintf(stderr, "Usage: djent [-brRpcuhds] [-l <n>] [-i <input file list filename>] [filename] [filename2] ...\n");
+	fprintf(stderr, "Usage: djent [-brRpcCuhds] [-l <n>] [-i <input file list filename>] [filename] [filename2] ...\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Compute statistics of random data.\n");
 	fprintf(stderr, "  Author: David Johnston, dj@deadhat.com\n");
