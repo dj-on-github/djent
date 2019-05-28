@@ -11,10 +11,12 @@ The improvements are:
 * The SCC result can be given a lag value to get a LAG-N correlation coefficient.
 * A list of filenames to analyze can be read from a text file using -i filename.
 * Test condition details (Volts, temp, id etc.) can be parsed from the filename and included in output. 
+* MCV Min Entropy is estimated in addition to Shannon Entropy. The symbol and entropy are both reported
+* The longest run and the symbol in the longest run are reported. For 1 bit-per-symbol analysis, a p-value is computed of the probability of a uniform random bit sequence having a longest run length equal to or less than the meaured run length. 
 
 ```
 djent -h
-Usage: djent [-brRpcuhds] [-l <n>] [-i <input file list filename>] [filename] [filename2] ...
+Usage: djent [-brRpcCuhds] [-l <n>] [-i <input file list filename>] [filename] [filename2] ...
 
 Compute statistics of random data.
   Author: David Johnston, dj@deadhat.com
@@ -27,6 +29,7 @@ Compute statistics of random data.
   -r             --byte_reverse             Reverse the bit order in incoming bytes
   -R             --word_reverse             Reverse the byte order in incoming 4 byte words
   -c             --occurrence               Print symbol occurrence counts
+  -C             --longest                  Print symbol longest run counts
   -w             --scc_wrap                 Treat data as cyclical in SCC
   -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1
   -f             --fold                     Fold uppercase letters to lower case
