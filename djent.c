@@ -1905,9 +1905,9 @@ int main(int argc, char** argv)
                 }
             }
             else if (parse_filename==1) {
-			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Filename\n");
+			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
             } else {
-			    printf("   0,  File-bytes,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Filename\n");
+			    printf("   0,  File-bytes,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
 		    }
         }
 
@@ -1976,17 +1976,17 @@ int main(int argc, char** argv)
                 }
             }
             else if ((parse_filename==1) && (symbol_length==1)) {
-                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIu32",%12f,%12f,%15f,   %16f,%19"PRIx64", %18"PRIu64", %18f, %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, filename);
+                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIu32",%12f,%12f,%15f,   %16f,%19"PRIx64", %18"PRIu64", %18f, %15"PRIu64", %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, longest_byte_pos, filename);
 
 		    } else if ((parse_filename==0) && (symbol_length==1)) {
-                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64", %18f, %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, filename);
+                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64", %18f, %15"PRIu64", %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, longest_byte_pos, filename);
             }
 
             else if ((parse_filename==1) && (symbol_length!=1)) {
-                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIx32",%12f,%12f,%15f,   %16f, %18"PRIx64", %18"PRIu64",             (null), %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, filename);
+                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIx32",%12f,%12f,%15f,   %16f, %18"PRIx64", %18"PRIu64",             (null), %15"PRIu64", %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, longest_byte_pos, filename);
 		    
             } else if ((parse_filename==0) && (symbol_length!=1)) {
-                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64",             (null), %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, filename);
+                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64",             (null), %15"PRIu64", %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, longest_byte_pos, filename);
             }
         }
 		else {
@@ -2055,7 +2055,12 @@ int main(int argc, char** argv)
                 printf("   Longest Run Symbol = %"PRIx64". Run Length = %"PRIu64"\n",longest_longest_symbol,longest_longest);
                 if (symbol_length == 1) printf("   Probabilty of longest run being <= %"PRIu64" = %f\n",longest_longest,result_longest_pvalue);
                 //printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
-                printf("   Position of Longest Run = %"PRIu64".\n",longest_byte_pos);
+                if (symbol_length != 8){
+                    longest_byte_pos = (longest_position*symbol_length)/8;
+                } else {
+                    longest_byte_pos = longest_position;
+                }
+                printf("   Position of Longest Run = %"PRIu64" (0x%"PRIx64"). Byte position %"PRIu64" (0x%"PRIx64")\n",longest_position, longest_position, longest_byte_pos, longest_byte_pos);
             }
 		}
 
