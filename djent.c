@@ -1967,6 +1967,12 @@ int main(int argc, char** argv)
 		finalize_compression();
 		finalize_scc();
 
+        if (symbol_length != 8){
+            longest_byte_pos = (longest_position*symbol_length)/8;
+        } else {
+            longest_byte_pos = longest_position;
+        }
+
 		if (terse == 1) {
             if (ent_exact==1) {
                 if (symbol_length == 1) {
@@ -2055,11 +2061,6 @@ int main(int argc, char** argv)
                 printf("   Longest Run Symbol = %"PRIx64". Run Length = %"PRIu64"\n",longest_longest_symbol,longest_longest);
                 if (symbol_length == 1) printf("   Probabilty of longest run being <= %"PRIu64" = %f\n",longest_longest,result_longest_pvalue);
                 //printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
-                if (symbol_length != 8){
-                    longest_byte_pos = (longest_position*symbol_length)/8;
-                } else {
-                    longest_byte_pos = longest_position;
-                }
                 printf("   Position of Longest Run = %"PRIu64" (0x%"PRIx64"). Byte position %"PRIu64" (0x%"PRIx64")\n",longest_position, longest_position, longest_byte_pos, longest_byte_pos);
             }
 		}
