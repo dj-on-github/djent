@@ -1697,51 +1697,51 @@ int main(int argc, char** argv)
                 using_inputlistfile = 1;
                 break;
  
-            case 'c':
+            case 'c':                    // Print out occurence count table
                 print_occurrence = 1;
                 break;
             
             case 'C':
-                print_longest = 1;
+                print_longest = 1;      // Print the longest run on symbols
                 break;
  
             case 'p':
-                parse_filename = 1;
-                break;
+                parse_filename = 1;    // Parse the filename for voltage, temp,
+                break;                 // condition and ID to include in output
 
             case 'r':
-                byte_reverse = 1;
+                byte_reverse = 1;      // Reverse the order of bit within bytes
                 break;
 
             case 'R':
-                word_reverse = 1;
+                word_reverse = 1;      // reverse the order of bytes within a word
                 break;
                             
             case 'w':
-                scc_wrap = 1;
-                break;
+                scc_wrap = 1;          // Compute SCC, treating the data as being
+                break;                 // circular, like in Knuth's version
                 
             case 'n':
-                lagn = atoi(optarg);
-                break;
+                lagn = atoi(optarg);   // Compute the lagn correlation.
+                break;                 // n=1 is equivalent to normal SCC
                                 
             case 'f':
-                fold = 1;
+                fold = 1;              // Fold upper case to lower 
                 break;
             
             case 't':
-                terse = 1;
+                terse = 1;             // Terse output - output as CSV
                 break;
            
             case 'e':
-                ent_exact = 1;
-                break;
+                ent_exact = 1;         // Copy the output format of
+                break;                 // John Walker's ent
  
             case 's':
-                suppress_header = 1;
-                break;
+                suppress_header = 1;   // Don't print the header of CSV
+                break;                 // output
 
-            case 'u':    
+            case 'u':                  // Help
             case 'h':   /* fall-through is intentional */
             case '?':
                 display_usage();
