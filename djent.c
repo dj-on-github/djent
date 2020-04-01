@@ -227,6 +227,7 @@ void display_usage() {
 	fprintf(stderr, "  -w             --scc_wrap                 Treat data as cyclical in SCC\n");
 	fprintf(stderr, "  -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1\n");
 	fprintf(stderr, "  -S <n>         --skip=<n>                 Skip over <n> initial symbols\n");
+	fprintf(stderr, "  -L <n>         --substring=<n>            Analyse no more that <n> symbols\n");
 	fprintf(stderr, "  -f             --fold                     Fold uppercase letters to lower case\n");
 	fprintf(stderr, "  -t             --terse                    Terse output\n");
 	fprintf(stderr, "  -e             --ent_exact                Exactly match output format of ent\n");
@@ -1629,6 +1630,8 @@ int main(int argc, char** argv)
     int skip_symbol;
     int got_skip;
     int skip_amount;
+    int got_substring;
+    int substring;
 
     /* Defaults */
     symbol_length = 8;
@@ -1651,6 +1654,8 @@ int main(int argc, char** argv)
     ent_exact = 0;
     got_skip = 0;
     skip_amount = 0;
+    got_substring = 0;
+    substring = 0;
 	#define ERRSTRINGSIZE 256
 	#define ERRSTRINGSIZE 256
     #ifdef _WIN32
@@ -1661,7 +1666,7 @@ int main(int argc, char** argv)
     
     int got_symbol_length=0;
     
-    char optString[] = "bprRcCwftehusSi:n:l:";
+    char optString[] = "bprRcCwftehusSi:n:l:L:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
@@ -1678,6 +1683,7 @@ int main(int argc, char** argv)
     { "ent_exact", no_argument, NULL, 'e' },
     { "suppress_header", no_argument, NULL, 's' },
     { "skip",required_argument, NULL, 'S' },
+    { "substring",required_argument, NULL, 'L' },
     { "help", no_argument, NULL, 'h' },
     { NULL, no_argument, NULL, 0 }
     };
@@ -1753,6 +1759,11 @@ int main(int argc, char** argv)
                 got_skip = 1;          // Skip initial symbols
                 skip_amount = atoi(optarg);
                 break;                 // output
+ 
+            case 'L':
+                got_substring = 1;          // Read only <n> symbols
+                substring = atoi(optarg);
+                break;                 // output
 
             case 'u':                  // Help
             case 'h':   /* fall-through is intentional */
@@ -1798,7 +1809,13 @@ int main(int argc, char** argv)
 
     // skip amount must be greater than zero
     if ((got_skip==1) && (skip_amount <1)) {
-        fprintf(stderr,"Errror: skip mount must be greater than 0\n");
+        fprintf(stderr,"Errror: skip amount must be greater than 0\n");
+        exit(1);
+    }
+
+    // substring must be > 1
+    if ((got_substring==1) && (substring <1)) {
+        fprintf(stderr,"Errror: substring length must be greater than 0\n");
         exit(1);
     }
 
@@ -1923,9 +1940,9 @@ int main(int argc, char** argv)
                 }
             }
             else if (parse_filename==1) {
-			    printf("   0,  File-bytes,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
+			    printf("   0,  symbols,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
             } else {
-			    printf("   0,  File-bytes,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
+			    printf("   0,  symbols,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
 		    }
         }
 
@@ -1973,6 +1990,9 @@ int main(int argc, char** argv)
 			/* Finish up if no symbols left in queue */
 			if (symbol == -1) break;
 
+            /* End if we reach end of substring */
+            if ((got_substring==1) && (symbol_count > substring)) break;
+
 			/* Then update the algorithms using the symbol */
 			update_mean(symbol);
 			update_entropy(symbol);
@@ -1988,6 +2008,8 @@ int main(int argc, char** argv)
 			update_compression(symbol);
 			update_scc(symbol);
 		} while (1 == 1);
+
+        symbol_count--; // Adjust for the fact symbol_count goes over by 1
 
 		finalize_mean();
 		if (no_occurrence_space == 0) finalize_occurrences();
@@ -2014,17 +2036,17 @@ int main(int argc, char** argv)
                 }
             }
             else if ((parse_filename==1) && (symbol_length==1)) {
-                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIu32",%12f,%12f,%15f,   %16f,%19"PRIx64", %18"PRIu64", %18f, %15"PRIu64", %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, longest_byte_pos, filename);
+                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIu32",%12f,%12f,%15f,   %16f,%19"PRIx64", %18"PRIu64", %18f, %15"PRIu64", %s\n", terse_index, symbol_count, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, longest_byte_pos, filename);
 
 		    } else if ((parse_filename==0) && (symbol_length==1)) {
-                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64", %18f, %15"PRIu64", %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, longest_byte_pos, filename);
+                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64", %18f, %15"PRIu64", %s\n", terse_index, symbol_count, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, longest_byte_pos, filename);
             }
 
             else if ((parse_filename==1) && (symbol_length!=1)) {
-                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIx32",%12f,%12f,%15f,   %16f, %18"PRIx64", %18"PRIu64",             (null), %15"PRIu64", %s\n", terse_index, filebytes, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, longest_byte_pos, filename);
+                printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIx32",%12f,%12f,%15f,   %16f, %18"PRIx64", %18"PRIu64",             (null), %15"PRIu64", %s\n", terse_index, symbol_count, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, longest_byte_pos, filename);
 		    
             } else if ((parse_filename==0) && (symbol_length!=1)) {
-                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64",             (null), %15"PRIu64", %s\n", terse_index, filebytes, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, longest_byte_pos, filename);
+                printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64",             (null), %15"PRIu64", %s\n", terse_index, symbol_count, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, longest_byte_pos, filename);
             }
         }
 		else {
@@ -2078,6 +2100,7 @@ int main(int argc, char** argv)
                 printf("   Voltage     : %0.2lfV\n",voltage);
                 printf("   Temperature : %0.2lfC\n",temperature);
                 }
+                printf("   Analysing %"PRId64" %d-bit symbols\n",symbol_count,symbol_length);
                 printf("   Shannon IID Entropy = %f bits per symbol\n",result_entropy);
                 printf("   Optimal compression would compress by %f percent\n", result_compression);
                 #ifdef _WIN32
