@@ -226,6 +226,7 @@ void display_usage() {
 	fprintf(stderr, "  -C             --longest                  Print symbol longest run counts\n");
 	fprintf(stderr, "  -w             --scc_wrap                 Treat data as cyclical in SCC\n");
 	fprintf(stderr, "  -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1\n");
+	fprintf(stderr, "  -S <n>         --skip=<n>                 Skip over <n> initial symbols\n");
 	fprintf(stderr, "  -f             --fold                     Fold uppercase letters to lower case\n");
 	fprintf(stderr, "  -t             --terse                    Terse output\n");
 	fprintf(stderr, "  -e             --ent_exact                Exactly match output format of ent\n");
@@ -1625,6 +1626,9 @@ void parse_the_filename(char *filename) {
 int main(int argc, char** argv)
 {
     int i;
+    int skip_symbol;
+    int got_skip;
+    int skip_amount;
 
     /* Defaults */
     symbol_length = 8;
@@ -1645,6 +1649,9 @@ int main(int argc, char** argv)
     word_reverse = 0; 
     buffer2_size = 0;
     ent_exact = 0;
+    got_skip = 0;
+    skip_amount = 0;
+	#define ERRSTRINGSIZE 256
 	#define ERRSTRINGSIZE 256
     #ifdef _WIN32
 	errno_t err;
@@ -1654,7 +1661,7 @@ int main(int argc, char** argv)
     
     int got_symbol_length=0;
     
-    char optString[] = "bprRcCwftehusi:n:l:";
+    char optString[] = "bprRcCwftehusSi:n:l:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
@@ -1670,6 +1677,7 @@ int main(int argc, char** argv)
     { "terse", no_argument, NULL, 't' },
     { "ent_exact", no_argument, NULL, 'e' },
     { "suppress_header", no_argument, NULL, 's' },
+    { "skip",required_argument, NULL, 'S' },
     { "help", no_argument, NULL, 'h' },
     { NULL, no_argument, NULL, 0 }
     };
@@ -1740,6 +1748,11 @@ int main(int argc, char** argv)
             case 's':
                 suppress_header = 1;   // Don't print the header of CSV
                 break;                 // output
+ 
+            case 'S':
+                got_skip = 1;          // Skip initial symbols
+                skip_amount = atoi(optarg);
+                break;                 // output
 
             case 'u':                  // Help
             case 'h':   /* fall-through is intentional */
@@ -1783,8 +1796,13 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    // skip amount must be greater than zero
+    if ((got_skip==1) && (skip_amount <1)) {
+        fprintf(stderr,"Errror: skip mount must be greater than 0\n");
+        exit(1);
+    }
+
 	terse_index = 0;
-	/* if (use_stdin == 0) { */
 	filenumber = optind;
 
     char *filelist;
@@ -1930,6 +1948,20 @@ int main(int argc, char** argv)
 			* then put them in a queue which behaves like a bitwise queue, then
 			* pull the symbols from the queue.
 			*/
+
+        // first skip the first 1024 bits if skip is chosen with -S option.
+
+        if (got_skip==1) {
+			if (queue_size == 0) {
+				not_eof = (int)fill_byte_queue(fp); /* get bytes from file into queue */
+        
+            }
+            for (skip_symbol=0;skip_symbol < skip_amount; skip_symbol++) {
+                symbol = get_symbol(1);
+            }
+        }
+
+        // Then do the main loop.
 		do {
 			if (queue_size == 0) {
 				not_eof = (int)fill_byte_queue(fp); /* get bytes from file into queue */
