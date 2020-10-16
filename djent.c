@@ -1,4 +1,3 @@
-
 /*
     djent - A reimplementation of Fourmilab's ent with several improvements. 
     
@@ -125,7 +124,7 @@ uint64_t longest_size;
 uint64_t longest_position;
 uint64_t longest_new_pos;
 uint64_t longest_byte_pos;
-uint64_t *longest_count;
+uint64_t *longest_count = (uint64_t*)0;
 uint64_t longest_total;
 int no_longest_space;
 
@@ -209,30 +208,30 @@ const unsigned char byte_reverse_table[] = {
 void update_monte_carlo(unsigned char symbol);
 
 void display_usage() {
-	fprintf(stderr, "Usage: djent [-brRpcCuhds] [-l <n>] [-i <input file list filename>] [filename] [filename2] ...\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Compute statistics of random data.\n");
-	fprintf(stderr, "  Author: David Johnston, dj@deadhat.com\n");
-	fprintf(stderr, "\n");
+    fprintf(stderr, "Usage: djent [-brRpcCuhds] [-l <n>] [-i <input file list filename>] [filename] [filename2] ...\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Compute statistics of random data.\n");
+    fprintf(stderr, "  Author: David Johnston, dj@deadhat.com\n");
+    fprintf(stderr, "\n");
 
-	fprintf(stderr, "  -i <filename>  --inputfilelist=<filename> Read list of filenames from <filename>\n");
-	fprintf(stderr, "  -p             --parse_filename           Extract CID, Process, Voltage and Temperature from filename.\n");
-	fprintf(stderr, "                                            The values will be included in the output.\n");
-	fprintf(stderr, "  -l <n>         --symbol_length=<n>        Treat incoming data symbols as bitlength n. Default is 8.\n");
-	fprintf(stderr, "  -b             --binary                   Treat incoming data as binary. Default bit length will be -l 1\n");
-	fprintf(stderr, "  -r             --byte_reverse             Reverse the bit order in incoming bytes\n");
-	fprintf(stderr, "  -R             --word_reverse             Reverse the byte order in incoming 4 byte words\n");
-	fprintf(stderr, "  -c             --occurrence               Print symbol occurrence counts\n");
-	fprintf(stderr, "  -C             --longest                  Print symbol longest run counts\n");
-	fprintf(stderr, "  -w             --scc_wrap                 Treat data as cyclical in SCC\n");
-	fprintf(stderr, "  -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1\n");
-	fprintf(stderr, "  -S <n>         --skip=<n>                 Skip over <n> initial symbols\n");
-	fprintf(stderr, "  -L <n>         --substring=<n>            Analyse no more that <n> symbols\n");
-	fprintf(stderr, "  -f             --fold                     Fold uppercase letters to lower case\n");
-	fprintf(stderr, "  -t             --terse                    Terse output\n");
-	fprintf(stderr, "  -e             --ent_exact                Exactly match output format of ent\n");
-	fprintf(stderr, "  -s             --suppress_header          Suppress the header in terse output\n");
-	fprintf(stderr, "  -h or -u       --help                     Print this text\n");
+    fprintf(stderr, "  -i <filename>  --inputfilelist=<filename> Read list of filenames from <filename>\n");
+    fprintf(stderr, "  -p             --parse_filename           Extract CID, Process, Voltage and Temperature from filename.\n");
+    fprintf(stderr, "                                            The values will be included in the output.\n");
+    fprintf(stderr, "  -l <n>         --symbol_length=<n>        Treat incoming data symbols as bitlength n. Default is 8.\n");
+    fprintf(stderr, "  -b             --binary                   Treat incoming data as binary. Default bit length will be -l 1\n");
+    fprintf(stderr, "  -r             --byte_reverse             Reverse the bit order in incoming bytes\n");
+    fprintf(stderr, "  -R             --word_reverse             Reverse the byte order in incoming 4 byte words\n");
+    fprintf(stderr, "  -c             --occurrence               Print symbol occurrence counts\n");
+    fprintf(stderr, "  -C             --longest                  Print symbol longest run counts\n");
+    fprintf(stderr, "  -w             --scc_wrap                 Treat data as cyclical in SCC\n");
+    fprintf(stderr, "  -n <n>         --lagn=<n>                 Lag gap in SCC. Default=1\n");
+    fprintf(stderr, "  -S <n>         --skip=<n>                 Skip over <n> initial symbols\n");
+    fprintf(stderr, "  -L <n>         --substring=<n>            Analyse no more that <n> symbols\n");
+    fprintf(stderr, "  -f             --fold                     Fold uppercase letters to lower case\n");
+    fprintf(stderr, "  -t             --terse                    Terse output\n");
+    fprintf(stderr, "  -e             --ent_exact                Exactly match output format of ent\n");
+    fprintf(stderr, "  -s             --suppress_header          Suppress the header in terse output\n");
+    fprintf(stderr, "  -h or -u       --help                     Print this text\n");
 
     fprintf(stderr, "\n Notes\n");
     fprintf(stderr,   "   * By default djent is in hex mode where it reads ascii hex data and converts it to binary to analyze.\n");
@@ -292,8 +291,8 @@ void display_usage() {
 double longest_run_cdf(unsigned int ui_n,unsigned int ui_r) { // n=longest run. r = length of data sequence
     double answer;
     mpfr_set_default_prec(1024);
-	mpfr_t n;
-	mpfr_t r;
+    mpfr_t n;
+    mpfr_t r;
     mpfr_t topa;
     mpfr_t bottoma;
     mpfr_t first;
@@ -381,16 +380,16 @@ int count_lines_in_file(char *filename) {
 
 uint64_t ipow(uint64_t base, uint64_t exp)
 {
-	uint64_t result = 1;
-	while (exp)
-	{
-		if (exp & 1)
-			result *= base;
-		exp >>= 1;
-		base *= base;
-	}
+    uint64_t result = 1;
+    while (exp)
+    {
+        if (exp & 1)
+            result *= base;
+        exp >>= 1;
+        base *= base;
+    }
 
-	return result;
+    return result;
 }
 
 /* Chi Square P value computation */
@@ -907,7 +906,8 @@ void init_longest() {
     }
     longest_size = ipow(2,symbol_length);
     fflush(stdout);
-    longest_count = (uint64_t *) malloc (sizeof(uint64_t)*occurrence_size);
+
+    longest_count = (uint64_t *) malloc (sizeof(uint64_t)*longest_size);
     /* printf("mallocating %lld bytes\n", (sizeof(uint64_t)*occurrence_size));
      */
     if (longest_count == NULL) {
@@ -919,14 +919,18 @@ void init_longest() {
         fprintf(stderr,"Warning, unable to allocate %ld bytes of memory for the longest run table\n",(sizeof(uint64_t)*longest_size));
         #endif
         no_longest_space = 1;
+    } else {
+        for (i=0;i<longest_size;i++) longest_count[i] = 0;
     }
-
-    for (i=0;i<longest_size;i++) longest_count[i] = 0;
 
     longest_last_symbol=0;
     longest_run=0;
     longest_longest=0;
     longest_longest_symbol=0;
+
+    longest_new_pos=0;
+    longest_byte_pos=0;
+
 };
 
 void init_chisq() {
@@ -949,8 +953,8 @@ void init_monte_carlo() {
     mp = 0;
     monty_total_count = 0;
     monty_inside_count = 0;
-	radiussquared = (256.0 * 256.0 * 256.0) - 1;
-	radiussquared = radiussquared*radiussquared;
+    radiussquared = (256.0 * 256.0 * 256.0) - 1;
+    radiussquared = radiussquared*radiussquared;
 
 };
 
@@ -987,7 +991,7 @@ void update_mean(uint64_t symbol) {
 };
 
 void update_entropy(uint64_t symbol) {
-	/* nothin to do here */
+    /* nothin to do here */
 };
 
 void update_occurrences(uint64_t symbol) {
@@ -995,7 +999,11 @@ void update_occurrences(uint64_t symbol) {
     occurrence_total++;
 };
 
-void update_longest(uint64_t symbol) {
+void update_longest(uint64_t symbol, uint64_t symbol_pos) {
+    uint64_t symbol_byte_pos;
+
+    symbol_byte_pos = (symbol_length * symbol_pos)/8;
+    
     if (symbol == longest_last_symbol) {
         longest_run++;
         if (longest_run > longest_count[symbol]) {
@@ -1009,36 +1017,37 @@ void update_longest(uint64_t symbol) {
     } else {
         longest_run=1;
         longest_last_symbol=symbol;
-        longest_new_pos = occurrence_total;
+        longest_new_pos = symbol_byte_pos; 
     }
+
 }
 
 void update_chisq(uint64_t symbol) {
-	/* Nothing to do here */
+    /* Nothing to do here */
 };
 
 void update_filesize(uint64_t symbol) {
-	/* Nothing to do here */
+    /* Nothing to do here */
 };
 
 void update_monte_carlo(unsigned char symbol) {
-	int mj;
+    int mj;
 
-	monte[mp++] = symbol;
+    monte[mp++] = symbol;
 
-	if (mp > 5) {
-		mp = 0;
-		monty_total_count++;
-		position_x = 0;
-		position_y = 0;
-		for (mj = 0; mj < 3; mj++) {
-			position_x = (position_x * 256.0) + monte[mj];
-			position_y = (position_y * 256.0) + monte[3 + mj];
-		}
-		if (((position_x * position_x) + (position_y *  position_y)) <= radiussquared) {
-			monty_inside_count++;
-		}
-	}
+    if (mp > 5) {
+        mp = 0;
+        monty_total_count++;
+        position_x = 0;
+        position_y = 0;
+        for (mj = 0; mj < 3; mj++) {
+            position_x = (position_x * 256.0) + monte[mj];
+            position_y = (position_y * 256.0) + monte[3 + mj];
+        }
+        if (((position_x * position_x) + (position_y *  position_y)) <= radiussquared) {
+            monty_inside_count++;
+        }
+    }
 };
 
 void update_compression(uint64_t symbol) {
@@ -1093,28 +1102,28 @@ void finalize_mean() {
     double mean;
     mean = (double)mean_total/(double)symbol_count; 
 
-	result_mean = mean;
-	return;
+    result_mean = mean;
+    return;
 
     if (terse==1) printf("%f,",mean);
     else printf("   Mean = %f\n",mean);
 };
 
 void finalize_entropy() {
-	unsigned int eloop;
-	
+    unsigned int eloop;
+    
     ent = 0.0;
-	for (eloop = 0; eloop < occurrence_size; eloop++) {
-		if (chisq_prob[eloop] > 0.0) {
-			ent += (chisq_prob[eloop] * log10(1.0 / chisq_prob[eloop]) *  3.32192809488736234787);
-		}
-	}
+    for (eloop = 0; eloop < occurrence_size; eloop++) {
+        if (chisq_prob[eloop] > 0.0) {
+            ent += (chisq_prob[eloop] * log10(1.0 / chisq_prob[eloop]) *  3.32192809488736234787);
+        }
+    }
 
-	result_entropy = ent;
-	return;
+    result_entropy = ent;
+    return;
 
-	if (terse == 1) printf("%f,", ent);
-	else printf("   Shannon Entropy = %f\n", ent);
+    if (terse == 1) printf("%f,", ent);
+    else printf("   Shannon Entropy = %f\n", ent);
 };
 
 void finalize_occurrences() {
@@ -1144,7 +1153,7 @@ void finalize_occurrences() {
     result_min_entropy = maxp_ent;
     result_min_entropy_symbol = maxsymbol;
 
-	if (terse != 1) {
+    if (terse != 1) {
         printf("   Min Entropy (by max occurrence of symbol %x) = %f\n", maxsymbol, maxp_ent);
     }
 };
@@ -1153,9 +1162,9 @@ void finalize_longest() {
     result_longest_pvalue = longest_run_cdf((unsigned int)longest_longest, (unsigned int)symbol_count); 
     
     if (symbol_length != 8) {
-        longest_byte_pos = (occurrence_total*symbol_length)/8;
+        longest_byte_pos = (symbol_count*symbol_length)/8;
     } else {
-        longest_byte_pos = occurrence_total;
+        longest_byte_pos = symbol_count;
     }
      
 }
@@ -1175,39 +1184,39 @@ void finalize_chisq() {
     }
    
     chisq_final_prob = chisqp(chisq, (occurrence_size-1)); 
-	result_chisq_count = occurrence_total;
-	result_chisq_distribution = chisq;
-	result_chisq_percent = chisq_final_prob * 100;
+    result_chisq_count = occurrence_total;
+    result_chisq_distribution = chisq;
+    result_chisq_percent = chisq_final_prob * 100;
 
-	return;
+    return;
 };
 
 void finalize_filesize() {
 };
 
 void finalize_monte_carlo() {
-	double pierr;
-	double montepi;
+    double pierr;
+    double montepi;
 
-	montepi = 4.0 * (((double)monty_inside_count) / monty_total_count);
+    montepi = 4.0 * (((double)monty_inside_count) / monty_total_count);
 
-	pierr = (fabs(M_PI - montepi) / M_PI)*100.0;
+    pierr = (fabs(M_PI - montepi) / M_PI)*100.0;
 
-	result_pi = montepi;
-	result_pierr = pierr;
+    result_pi = montepi;
+    result_pierr = pierr;
 
-	return;
+    return;
 
 };
 
 void finalize_compression() {
-	double compression;
+    double compression;
 
-	compression = (100.0 * (symbol_length - ent)) / symbol_length;
+    compression = (100.0 * (symbol_length - ent)) / symbol_length;
 
-	result_compression = compression;
+    result_compression = compression;
 
-	return;
+    return;
 
 };
 
@@ -1241,7 +1250,7 @@ void finalize_scc() {
     bottom = (int64_t)(scc_count * t2) - (int64_t)(t3*t3);
     scc = (double)top/(double)bottom;
 
-	result_scc = scc;
+    result_scc = scc;
 
     // This computation is to try to use the A=B count
     // The bias masks the serial correlation
@@ -1259,7 +1268,7 @@ void finalize_scc() {
     //printf("OtherSCC\n     BIAS = %f\n     paeqb = %f\n     other_scc = %f\n",bias,paeqb,other_scc); 
     //printf("     (1.0-(2.0*fabs(bias-0.5))) = %f\n",(1.0-(2.0*fabs(bias-0.5))));
     //printf("     full other scc = %f\n",(((2*paeqb)-1)*  (1.0-(2.0*fabs(bias-0.5)))));
-	return;
+    return;
 };
 
 /* Visual Studio C doesnt have a regex library. So this does the
@@ -1656,17 +1665,17 @@ int main(int argc, char** argv)
     skip_amount = 0;
     got_substring = 0;
     substring = 0;
-	#define ERRSTRINGSIZE 256
-	#define ERRSTRINGSIZE 256
+    #define ERRSTRINGSIZE 256
+    #define ERRSTRINGSIZE 256
     #ifdef _WIN32
-	errno_t err;
-	char errstring[ERRSTRINGSIZE];
+    errno_t err;
+    char errstring[ERRSTRINGSIZE];
     #endif
     int filenumber = 0;
     
     int got_symbol_length=0;
     
-    char optString[] = "bprRcCwftehusSi:n:l:L:";
+    char optString[] = "bprRcCwftehusS:i:n:l:L:";
     int longIndex;
     static const struct option longOpts[] = {
     { "symbol_length", required_argument, NULL, 'l' },
@@ -1780,27 +1789,27 @@ int main(int argc, char** argv)
     } // end while
     
 
-	/* Range check the var args */
+    /* Range check the var args */
 
     if ((fold==1) && (symbol_length != 8)) {
             fprintf(stderr,"Error: Fold must be used with 8 bit word size\n");
             exit(1);
     }
         
-	if (symbol_length < 1) {
-		fprintf(stderr,"Error: Symbol length %d must not be 0 or negative. \n",symbol_length);
-		exit(1);
-	}
+    if (symbol_length < 1) {
+        fprintf(stderr,"Error: Symbol length %d must not be 0 or negative. \n",symbol_length);
+        exit(1);
+    }
 
-    init_byte_queue();
+    //init_byte_queue();
     
     /* Loop through the filenames */
-	if ((optind==argc) && (using_inputlistfile==0)) {
-		use_stdin = 1;
-	}
-	else {
-		use_stdin = 0;
-	}
+    if ((optind==argc) && (using_inputlistfile==0)) {
+        use_stdin = 1;
+    }
+    else {
+        use_stdin = 0;
+    }
 
     if ((parse_filename==1) && (use_stdin==1)) {
         fprintf(stderr,"Error: Can't parse filename when using stdin for input\n");
@@ -1819,8 +1828,8 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-	terse_index = 0;
-	filenumber = optind;
+    terse_index = 0;
+    filenumber = optind;
 
     char *filelist;
     int lines;
@@ -1869,18 +1878,18 @@ int main(int argc, char** argv)
         filenumber = 0; 
     }
 
-	do {
-		terse_index++;
-		filebytes = 0;
+    do {
+        terse_index++;
+        filebytes = 0;
         /* printf("OPTIND %d, filenumber %d, ARGC %d\n",optind,filenumber,argc); */
-		if (use_stdin==1) {
-			use_stdin = 1;
-			if (hexmode != 1) freopen(NULL, "rb", stdin);
-			fp = stdin;
-		}
-		else {
+        if (use_stdin==1) {
+            use_stdin = 1;
+            if (hexmode != 1) freopen(NULL, "rb", stdin);
+            fp = stdin;
+        }
+        else {
             if (using_inputlistfile==0) {
-			    filename = argv[filenumber];
+                filename = argv[filenumber];
             } else {
                 /* Get file from input file list file */ 
                 filename = &(filelist[256*filenumber]);
@@ -1888,50 +1897,47 @@ int main(int argc, char** argv)
             }
             if (parse_filename==1) parse_the_filename(filename);
 
-			if (hexmode == 1) {
-				if ((terse == 0) && (ent_exact == 0))printf(" opening %s as hex text\n", filename);
+            if (hexmode == 1) {
+                if ((terse == 0) && (ent_exact == 0))printf(" opening %s as hex text\n", filename);
                 #ifdef _WIN32
-				if ((err = fopen_s(&fp, filename, "r")) != 0) {
-					strerror_s(errstring, ERRSTRINGSIZE, err);
-					fprintf(stderr, "Error : Unable to open file %s, %s\n", filename, errstring);
-					exit(1);
-				}
+                if ((err = fopen_s(&fp, filename, "r")) != 0) {
+                    strerror_s(errstring, ERRSTRINGSIZE, err);
+                    fprintf(stderr, "Error : Unable to open file %s, %s\n", filename, errstring);
+                    exit(1);
+                }
                 #else
-				fp = fopen(filename,"r");
+                fp = fopen(filename,"r");
                 if (fp == NULL) {
-					fprintf(stderr, "Error : Unable to open file %s\n", filename);
-					exit(1);
+                    fprintf(stderr, "Error : Unable to open file %s\n", filename);
+                    exit(1);
                 }
                 #endif
-			}
-			else {
-				if ((terse == 0) && (ent_exact==0)) printf(" opening %s as binary\n", filename);
+            }
+            else {
+                if ((terse == 0) && (ent_exact==0)) printf(" opening %s as binary\n", filename);
                 #ifdef _WIN32
-				if ((err = fopen_s(&fp, filename, "rb")) != 0) {
-					strerror_s(errstring, ERRSTRINGSIZE, err);
-					fprintf(stderr, "Error : Unable to open file %s, %s\n", filename, errstring);
-					exit(1);
-				}
+                if ((err = fopen_s(&fp, filename, "rb")) != 0) {
+                    strerror_s(errstring, ERRSTRINGSIZE, err);
+                    fprintf(stderr, "Error : Unable to open file %s, %s\n", filename, errstring);
+                    exit(1);
+                }
                 #else
-				fp = fopen(filename,"rb");
+                fp = fopen(filename,"rb");
                 if (fp == NULL) {
-					fprintf(stderr, "Error : Unable to open file %s\n", filename);
-					exit(1);
+                    fprintf(stderr, "Error : Unable to open file %s\n", filename);
+                    exit(1);
                 }
                 #endif
-				/*  fp = fopen(filename,"rb"); */
-				/* printf("           %x\n",(unsigned int)fp);*/
-			}
+                /*  fp = fopen(filename,"rb"); */
+                /* printf("           %x\n",(unsigned int)fp);*/
+            }
 
-			if ((terse == 0) && (ent_exact == 0))printf(" Symbol Size(bits) = %d\n", symbol_length);
+            if ((terse == 0) && (ent_exact == 0))printf(" Symbol Size(bits) = %d\n", symbol_length);
 
-		}
-/*
-   0,  File-bytes,    Entropy, Min_entropy, MinEntropy-Symbol,     Chi-square,  Mean,        Monte-Carlo-Pi, Serial-Correlation, Filename
-   1,      210109,    7.942742,    2.349834,55,    0.000000,  127.497723,    3.240505,       0.002354,           pt1a.bin
-*/
-		/* Print terse header if necessary */
-		if ((terse == 1) && (terse_index == 1) && (suppress_header==0)) {
+        }
+        
+        /* Print terse header if necessary */
+        if ((terse == 1) && (terse_index == 1) && (suppress_header==0)) {
             if (ent_exact == 1) {
                 if (symbol_length==1) {
                     printf("0,File-bits,Entropy,Chi-square,Mean,Monte-Carlo-Pi,Serial-Correlation\n");
@@ -1940,37 +1946,38 @@ int main(int argc, char** argv)
                 }
             }
             else if (parse_filename==1) {
-			    printf("   0,  symbols,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
+                printf("   0,  symbols,     CID, Process, Voltage,    Temp,     Entropy,  MinEntropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
             } else {
-			    printf("   0,  symbols,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
-		    }
+                printf("   0,  symbols,    Entropy,  Min_entropy, MinEntropy-Symbol,  Chi-square,        Mean, Monte-Carlo-Pi, Serial-Correlation, Longest-Run-Symbol, Longest-Run-Length, Longest-Run-PValue, Longest-Run-Pos, Filename\n");
+            }
         }
 
-		/* Initialize the metrics */
-		symbol_count = 0;
+        /* Initialize the metrics */
+        symbol_count = 0;
 
         fflush(stdout);
-		init_mean();
-		init_entropy();
-		init_occurrences();
-		init_longest();
-		init_chisq();
-		init_filesize();
-		init_monte_carlo();
-		init_compression();
-		init_scc();
+        init_byte_queue();
+        init_mean();
+        init_entropy();
+        init_occurrences();
+        init_longest();
+        init_chisq();
+        init_filesize();
+        init_monte_carlo();
+        init_compression();
+        init_scc();
 
-		/* Now process the file fp */
-		/* Since we have multiple possible symbol sizes, first pull the bytes
-			* then put them in a queue which behaves like a bitwise queue, then
-			* pull the symbols from the queue.
-			*/
+        /* Now process the file fp */
+        /* Since we have multiple possible symbol sizes, first pull the bytes
+            * then put them in a queue which behaves like a bitwise queue, then
+            * pull the symbols from the queue.
+            */
 
-        // first skip the first 1024 bits if skip is chosen with -S option.
+        // first skip the first bits if skip is chosen with -S option.
 
         if (got_skip==1) {
-			if (queue_size == 0) {
-				not_eof = (int)fill_byte_queue(fp); /* get bytes from file into queue */
+            if (queue_size == 0) {
+                not_eof = (int)fill_byte_queue(fp); /* get bytes from file into queue */
         
             }
             for (skip_symbol=0;skip_symbol < skip_amount; skip_symbol++) {
@@ -1979,47 +1986,50 @@ int main(int argc, char** argv)
         }
 
         // Then do the main loop.
-		do {
-			if (queue_size == 0) {
-				not_eof = (int)fill_byte_queue(fp); /* get bytes from file into queue */
-				if (not_eof == 0) break;
-			}
-			symbol = get_symbol(symbol_length);      /* Pull a symbol from the queue */
-			symbol_count++;
 
-			/* Finish up if no symbols left in queue */
-			if (symbol == -1) break;
+
+        do {
+
+            if (queue_size == 0) {
+                not_eof = (int)fill_byte_queue(fp); /* get bytes from file into queue */
+                if (not_eof == 0) break;
+            }
+            symbol = get_symbol(symbol_length);      /* Pull a symbol from the queue */
+            symbol_count++;
+
+            /* Finish up if no symbols left in queue */
+            if (symbol == -1) break;
 
             /* End if we reach end of substring */
-            if ((got_substring==1) && (symbol_count > substring)) break;
+            if ((got_substring==1) && ((symbol_count+skip_amount) > substring)) break;
 
-			/* Then update the algorithms using the symbol */
-			update_mean(symbol);
-			update_entropy(symbol);
-			if (no_occurrence_space == 0) update_occurrences(symbol);
-			if (no_longest_space == 0) update_longest(symbol);
-			update_chisq(symbol);
-			update_filesize(symbol);
-			/* Monte Carlo is different, it works on bytes, not symbols
-				* So we call the update from within the fill_byte_queue routine
-				*/
-				/* update_monte_carlo(symbol); */
+            /* Then update the algorithms using the symbol */
+            update_mean(symbol);
+            update_entropy(symbol);
+            if (no_occurrence_space == 0) update_occurrences(symbol);
+            if (no_longest_space == 0) update_longest(symbol, symbol_count+skip_amount);
+            update_chisq(symbol);
+            update_filesize(symbol);
+            /* Monte Carlo is different, it works on bytes, not symbols
+                * So we call the update from within the fill_byte_queue routine
+                */
+                /* update_monte_carlo(symbol); */
 
-			update_compression(symbol);
-			update_scc(symbol);
-		} while (1 == 1);
+            update_compression(symbol);
+            update_scc(symbol);
+        } while (1 == 1);
 
         symbol_count--; // Adjust for the fact symbol_count goes over by 1
 
-		finalize_mean();
-		if (no_occurrence_space == 0) finalize_occurrences();
+        finalize_mean();
+        if (no_occurrence_space == 0) finalize_occurrences();
         if (no_longest_space == 0) finalize_longest();
-		finalize_chisq();
-		finalize_entropy();
-		finalize_filesize();
-		finalize_monte_carlo();
-		finalize_compression();
-		finalize_scc();
+        finalize_chisq();
+        finalize_entropy();
+        finalize_filesize();
+        finalize_monte_carlo();
+        finalize_compression();
+        finalize_scc();
 
         if (symbol_length != 8){
             longest_byte_pos = (longest_position*symbol_length)/8;
@@ -2027,7 +2037,7 @@ int main(int argc, char** argv)
             longest_byte_pos = longest_position;
         }
 
-		if (terse == 1) {
+        if (terse == 1) {
             if (ent_exact==1) {
                 if (symbol_length == 1) {
                 printf("%d,%"PRIu64",%f,%f,%f,%f,%f\n",terse_index,filebytes*8,result_entropy,result_chisq_distribution,result_mean,result_pi,result_scc);
@@ -2038,18 +2048,18 @@ int main(int argc, char** argv)
             else if ((parse_filename==1) && (symbol_length==1)) {
                 printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIu32",%12f,%12f,%15f,   %16f,%19"PRIx64", %18"PRIu64", %18f, %15"PRIu64", %s\n", terse_index, symbol_count, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, longest_byte_pos, filename);
 
-		    } else if ((parse_filename==0) && (symbol_length==1)) {
+            } else if ((parse_filename==0) && (symbol_length==1)) {
                 printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64", %18f, %15"PRIu64", %s\n", terse_index, symbol_count, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest,result_longest_pvalue, longest_byte_pos, filename);
             }
 
             else if ((parse_filename==1) && (symbol_length!=1)) {
                 printf("%4d,%12"PRIu64",%8s,%8s,%8.2f,%8.2f,%12f,%12f,%18"PRIx32",%12f,%12f,%15f,   %16f, %18"PRIx64", %18"PRIu64",             (null), %15"PRIu64", %s\n", terse_index, symbol_count, deviceid,process,voltage,temperature,result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, longest_byte_pos, filename);
-		    
+            
             } else if ((parse_filename==0) && (symbol_length!=1)) {
                 printf("%4d,%12"PRIu64",%11f, %12f,%18"PRIx32",%12f,%12f,%15f,       %12f, %18"PRIx64", %18"PRIu64",             (null), %15"PRIu64", %s\n", terse_index, symbol_count, result_entropy, result_min_entropy,result_min_entropy_symbol, result_chisq_percent, result_mean, result_pi, result_scc, longest_longest_symbol,longest_longest, longest_byte_pos, filename);
             }
         }
-		else {
+        else {
 
             /* Output the occurrence count if requested */
             if ((print_occurrence==1) && (no_occurrence_space == 0) ) {
@@ -2118,15 +2128,18 @@ int main(int argc, char** argv)
                 //printf("SCC by A=B Count is %f (totally uncorrelated = 0.0).\n",other_scc);
                 printf("   Position of Longest Run = %"PRIu64" (0x%"PRIx64"). Byte position %"PRIu64" (0x%"PRIx64")\n",longest_position, longest_position, longest_byte_pos, longest_byte_pos);
             }
-		}
+        }
 
-        /* Free the per-loop mallocs */		
+        /* Free the per-loop mallocs */     
         free(occurrence_count);
+        free(longest_count);
         free(chisq_prob);
     
         if (fp != stdin) fclose(fp); 
-		filenumber++;
-	} while (
+        filenumber++;
+
+        symbol_count = 0;
+    } while (
                     ((filenumber < argc) && (use_stdin != 1) && (using_inputlistfile!=1)) /* still going through argv */
                 ||
                     ((filenumber < filenamecount) && (using_inputlistfile==1)) /* still going through file list file */
@@ -2134,7 +2147,7 @@ int main(int argc, char** argv)
     /* Free the per-run malloc */
     free(filelist);
 
-	/* Find out what the various compilers give us
+    /* Find out what the various compilers give us
     #ifdef __llvm__
         printf("llvm\n");
     #endif
@@ -2149,11 +2162,11 @@ int main(int argc, char** argv)
     #ifdef __linux__
         printf("linux\n");
     #endif
-	#ifdef _WIN32
-		printf("win32\n");
-	#endif
+    #ifdef _WIN32
+        printf("win32\n");
+    #endif
     */
-	return 0;
+    return 0;
 
 }
 
