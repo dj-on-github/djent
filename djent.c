@@ -2032,7 +2032,7 @@ int main(int argc, char** argv)
             update_scc(symbol);
         } while (1 == 1);
 
-        symbol_count--; // Adjust for the fact symbol_count goes over by 1
+        //symbol_count--; // Adjust for the fact symbol_count goes over by 1
 
         finalize_mean();
         if (no_occurrence_space == 0) finalize_occurrences();
