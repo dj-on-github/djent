@@ -1,0 +1,53 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: djent
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: David
+    family-names: Johnston
+    email: dj@deadhat.com
+    orcid: 'https://orcid.org/0009-0002-5149-9414'
+repository-code: 'https://github.com/dj-on-github/djent'
+abstract: >-
+  djent is a reimplementation of the Fourmilab/John Walker
+  random number test program ent.
+
+
+  The improvements are:
+
+
+  Multiple input file names can be provided at once. This
+  works nicely with the CSV format output.
+
+  -h works as well as -u to get the help information.
+
+  The filename is present in CSV output
+
+  The symbol size can be any number of bits up to 32. ent
+  was constrained to 1 or 8.
+
+  The SCC test can be either wrap-around or not wrap-around.
+
+  The SCC result can be given a lag value to get a LAG-N
+  correlation coefficient.
+
+  A list of filenames to analyze can be read from a text
+  file using -i filename.
+
+  Test condition details (Volts, temp, id etc.) can be
+  parsed from the filename and included in output.
+
+  MCV Min Entropy is estimated in addition to Shannon
+  Entropy. The symbol and entropy are both reported
+
+  The longest run and the symbol in the longest run are
+  reported. For 1 bit-per-symbol analysis, a p-value is
+  computed of the probability of a uniform random bit
+  sequence having a longest run length equal to or less than
+  the meaured run length.
+license: GPL-2.0
