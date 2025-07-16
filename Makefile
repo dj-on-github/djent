@@ -21,7 +21,7 @@ djent.o: djent.c markov2p.h filename_parse.h mathy_things.h
 	$(CC) -c $(CFLAGS) -o djent.o djent.c
 
 djent: djent.o markov2p.o filename_parse.o mathy_things.o longest_run_cdf.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) longest_run_cdf.o mathy_things.o filename_parse.o markov2p.o djent.o -o djent 
+	$(CC) $(CFLAGS) $(LDFLAGS) longest_run_cdf.o mathy_things.o filename_parse.o markov2p.o djent.o -o djent $(LDLIBS)
 
 install:
 	cp djent /usr/local/bin
