@@ -5,7 +5,7 @@ LDLIBS = -lm -lgmp -lmpfr
 
 all: djent
 
-mathy_things.o: longest_run_cdf.c longest_run_cdf.h
+longest_run_cdf.o: longest_run_cdf.c longest_run_cdf.h
 	$(CC) -c $(CFLAGS) -o longest_run_cdf.o longest_run_cdf.c
 
 mathy_things.o: mathy_things.c mathy_things.h
