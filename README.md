@@ -94,6 +94,18 @@ Compute statistics of random data.
      djent -b -t -p  rawdata_CID-X23_PROC-TTFT_1p2V_25p0C_.bin
 ```
   
+# Compiling
 
+Linux
+```
+> make
+```
+
+Macos with ARM silicon
+```
+> brew install mpfr
+> make -f Makefile_macos
+```
+ 
 
  

@@ -953,7 +953,8 @@ void finalize_occurrences() {
 
 void finalize_longest() {
     result_longest_pvalue = longest_run_cdf((unsigned int)longest_longest, (unsigned int)symbol_count); 
-    
+    //result_longest_pvalue = 0.0;
+
     if (symbol_length != 8) {
         longest_byte_pos = (symbol_count*symbol_length)/8;
     } else {

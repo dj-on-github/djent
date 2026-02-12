@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -I/usr/local/include -m64 -g -Wall
-LDFLAGS = -L/usr/local/lib 
+CFLAGS = -I/usr/local/include -I/opt/homebrew/include -m64 -g -Wall
+LDFLAGS = -L/usr/local/lib -L/opt/homebrew/lib 
 LDLIBS = -lm -lgmp -lmpfr
 
 all: djent
@@ -19,9 +19,6 @@ markov2p.o: markov2p.c markov2p.h
 
 djent.o: djent.c markov2p.h filename_parse.h mathy_things.h
 	$(CC) -c $(CFLAGS) -o djent.o djent.c
-
-djent: djent.o markov2p.o filename_parse.o mathy_things.o
-	$(CC) $(CFLAGS) $(LDFLAGS) mathy_things.o filename_parse.o markov2p.o djent.o -o djent $(LDLIBS)
 
 djent: djent.o markov2p.o filename_parse.o mathy_things.o longest_run_cdf.o
 	$(CC) $(CFLAGS) $(LDFLAGS) longest_run_cdf.o mathy_things.o filename_parse.o markov2p.o djent.o -o djent $(LDLIBS)
