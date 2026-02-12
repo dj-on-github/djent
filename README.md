@@ -99,12 +99,14 @@ Compute statistics of random data.
 Linux
 ```
 > make
+> make install
 ```
 
 Macos with ARM silicon
 ```
 > brew install mpfr
 > make -f Makefile_macos
+> make -f Makefile_macos install
 ```
  
 
