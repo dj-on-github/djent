@@ -108,6 +108,13 @@ Macos with ARM silicon
 > make -f Makefile_macos
 > make -f Makefile_macos install
 ```
- 
+
+Macos with ARM silicon (Swift Version)
+```
+> cd djent/swift
+> source build
+> source install
+```
+
 
  
