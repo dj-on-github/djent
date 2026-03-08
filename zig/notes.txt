@@ -1,0 +1,8 @@
+Key Zig-specific design choices:
+Wrapping arithmetic — The C code relies on unsigned wraparound in the SCC accumulation (t1, t2, t3). Zig would normally trap on overflow, so I used *% and +% operators to match the C semantics exactly.
+Explicit allocator pattern — Rather than C's global malloc/free, the Analyzer takes a std.mem.Allocator parameter. The occurrence, longest-run, and chi-square tables are heap-allocated through it, and deinit() frees them properly.
+Generic readers/writers — The process() and output functions take anytype reader/writer parameters, so they work transparently with file readers, buffered readers, or stdin — no special-casing needed.
+No MPFR dependency — Same as the Swift version, longest_run_cdf.zig uses f64 arithmetic. For the vast majority of real-world data files this is perfectly adequate.
+Error handling — Zig's error unions propagate cleanly through the call chain. I/O errors, allocation failures, and file-not-found are all handled idiomatically rather than via fprintf(stderr, ...); exit(1).
+
+
